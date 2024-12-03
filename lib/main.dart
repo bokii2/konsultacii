@@ -37,6 +37,7 @@ class ConsultationApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Consultation Scheduler',
       theme: ThemeData(
         primarySwatch: Colors.indigo,
@@ -1516,126 +1517,145 @@ class ConsultationCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: Colors.grey.withOpacity(0.1),
+          color: const Color(0xFF0099FF).withOpacity(0.1),
+          // Changed to brand blue
           width: 1,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  consultation.professorName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF000066),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    consultation.status == 'available' ? 'Слободен' : 'Зафатен',
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              icon: Icons.calendar_today,
-              label: 'Датум:',
-              value: DateFormat('dd MMMM yyyy', 'mk')
-                  .format(consultation.dateTime),
-            ),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              icon: Icons.access_time,
-              label: 'Час:',
-              value: DateFormat('HH:mm').format(consultation.dateTime),
-            ),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              icon: Icons.location_on,
-              label: 'Просторија:',
-              value: consultation.location,
-            ),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              icon: Icons.timer,
-              label: 'Времетраење:',
-              value: '${consultation.durationMinutes} минути',
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (isProfessor && onDelete != null)
-                  TextButton.icon(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.red,
-                    ),
-                    label: const Text(
-                      'Избриши',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                    onPressed: onDelete,
-                  )
-                else if (!isProfessor &&
-                    onBook != null &&
-                    consultation.status == 'available')
-                  ElevatedButton.icon(
-                    icon: const Icon(
-                      Icons.calendar_month,
-                      size: 20,
-                    ),
-                    label: const Text(
-                      'Закажи',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0099FF),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: onBook,
-                  ),
-              ],
+      surfaceTintColor: Colors.transparent,
+      // Remove material tint
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03), // Very subtle shadow
+              blurRadius: 8,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    consultation.professorName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF000066),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      consultation.status == 'available'
+                          ? 'Слободен'
+                          : 'Зафатен',
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildInfoRow(
+                icon: Icons.calendar_today,
+                label: 'Датум:',
+                value: DateFormat('dd MMMM yyyy', 'mk')
+                    .format(consultation.dateTime),
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                icon: Icons.access_time,
+                label: 'Час:',
+                value: DateFormat('HH:mm').format(consultation.dateTime),
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                icon: Icons.location_on,
+                label: 'Просторија:',
+                value: consultation.location,
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                icon: Icons.timer,
+                label: 'Времетраење:',
+                value: '${consultation.durationMinutes} минути',
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (isProfessor && onDelete != null)
+                    TextButton.icon(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.red,
+                      ),
+                      label: const Text(
+                        'Избриши',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      onPressed: onDelete,
+                    )
+                  else if (!isProfessor &&
+                      onBook != null &&
+                      consultation.status == 'available')
+                    ElevatedButton.icon(
+                      icon: const Icon(
+                        Icons.calendar_month,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'Закажи',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0099FF),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: onBook,
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
