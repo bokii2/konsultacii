@@ -148,13 +148,29 @@ class _EditConsultationDialogState extends State<EditConsultationDialog> {
     );
   }
 
+  // In EditConsultationDialog
   Widget _buildCommentField() {
     return TextField(
       controller: commentController,
       maxLines: 3,
+      enabled: widget.isProfessor, // Only enable for professors
       decoration: InputDecoration(
         labelText: 'Коментар',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        alignLabelWithHint: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(
+            color: Color(0xFF0099FF),
+            width: 2,
+          ),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
       ),
     );
   }

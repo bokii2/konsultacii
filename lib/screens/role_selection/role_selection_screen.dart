@@ -46,10 +46,17 @@ class RoleSelectionScreen extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          "https://www.finki.ukim.mk/sites/default/files/styles/large/public/default_images/finki_52_1_2_1_62_0.png?itok=miZDgQ_6",
+        child: Container(
+          height: 200,
           width: double.infinity,
-          fit: BoxFit.cover,
+          color: const Color(0xFF0099FF).withOpacity(0.1),
+          child: const Center(
+            child: Icon(
+              Icons.school,
+              size: 64,
+              color: Color(0xFF0099FF),
+            ),
+          ),
         ),
       ),
     );

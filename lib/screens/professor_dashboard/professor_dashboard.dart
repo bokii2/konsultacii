@@ -28,39 +28,59 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
     _selectedDay = _focusedDay;
     _loadConsultations();
   }
+
   void _loadConsultations() {
-    // Replace with your actual professor ID
     consultations = _consultationService.getConsultationsForProfessor('prof1');
     setState(() {});
   }
 
   List<Consultation> _getConsultationsForDay(DateTime day) {
+    if (consultations.isEmpty) {
+      return [];
+    }
     return consultations.where((consultation) {
+      if (consultation.dateTime == null) return false;
       return DateUtils.isSameDay(consultation.dateTime, day);
     }).toList();
-  }
-  void _handleDeleteConsultation(Consultation consultation) {
-    setState(() {
-      _consultationService.deleteConsultation(consultation.id);
-      consultations.remove(consultation);
-    });
   }
 
   void _handleEditConsultation(Consultation consultation, Map<String, dynamic> updates) {
     setState(() {
-      _consultationService.updateConsultation(consultation.id, updates);
-      _loadConsultations(); // Reload to get updated data
-    });
-  }
+      if (updates.containsKey('dateTime')) {
+        consultation.updateDetails(
+          newDateTime: updates['dateTime'] as DateTime,
+          newLocation: updates['location'] as String?,
+          newComment: updates['comment'] as String?,
+        );
+      }
 
-  void _handleMarkUnavailable(Consultation consultation) {
-    setState(() {
-      _consultationService.updateConsultation(
-        consultation.id,
-        {'status': ConsultationStatus.professorUnavailable},
-      );
-      _loadConsultations();
+      _consultationService.updateConsultation(consultation.id, updates);
+
+      // Update in local list
+      final index = consultations.indexWhere((c) => c.id == consultation.id);
+      if (index != -1) {
+        consultations[index] = consultation;
+      }
+
+      // Update selected day if date changed
+      if (updates.containsKey('dateTime')) {
+        _selectedDay = updates['dateTime'] as DateTime;
+        _focusedDay = updates['dateTime'] as DateTime;
+      }
     });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Консултацијата е успешно изменета'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
@@ -148,7 +168,8 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
         lastDay: DateTime.now().add(const Duration(days: 365)),
         focusedDay: _focusedDay,
         calendarFormat: _calendarFormat,
-        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        selectedDayPredicate: (day) =>
+        _selectedDay != null && isSameDay(_selectedDay!, day),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
             _selectedDay = selectedDay;
@@ -191,6 +212,18 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
   }
 
   Widget _buildConsultationsForSelectedDay() {
+    if (_selectedDay == null) {
+      return const Center(
+        child: Text(
+          'Изберете ден за да ги видите консултациите',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
     final consultationsForDay = _getConsultationsForDay(_selectedDay!);
 
     if (consultationsForDay.isEmpty) {
@@ -209,14 +242,17 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
       padding: const EdgeInsets.all(16),
       itemCount: consultationsForDay.length,
       itemBuilder: (context, index) {
+        if (index >= consultationsForDay.length) {
+          return const SizedBox.shrink();
+        }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: ConsultationCard(
             consultation: consultationsForDay[index],
             isProfessor: true,
-            onDelete: () => _handleDeleteConsultation(consultationsForDay[index]),
+            onDelete: () => _showDeleteConfirmation(consultationsForDay[index]),
             onEdit: (updates) => _handleEditConsultation(consultationsForDay[index], updates),
-            onMarkUnavailable: () => _handleMarkUnavailable(consultationsForDay[index]),
+            onMarkUnavailable: () => _showMarkUnavailableConfirmation(consultationsForDay[index]),
           ),
         );
       },
@@ -224,26 +260,120 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
   }
 
   Widget _buildListView() {
-    final consultationsForDay = _getConsultationsForDay(_selectedDay!);
+    if (consultations.isEmpty) {
+      return const Center(
+        child: Text(
+          'Нема закажани консултации',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: consultations.length,
       itemBuilder: (context, index) {
+        if (index >= consultations.length) {
+          return const SizedBox.shrink();
+        }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: ConsultationCard(
-            consultation: consultationsForDay[index],
+            consultation: consultations[index],
             isProfessor: true,
-            onDelete: () => _handleDeleteConsultation(consultationsForDay[index]),
-            onEdit: (updates) => _handleEditConsultation(consultationsForDay[index], updates),
-            onMarkUnavailable: () => _handleMarkUnavailable(consultationsForDay[index]),
+            onDelete: () => _showDeleteConfirmation(consultations[index]),
+            onEdit: (updates) => _handleEditConsultation(consultations[index], updates),
+            onMarkUnavailable: () => _showMarkUnavailableConfirmation(consultations[index]),
           ),
         );
       },
     );
   }
+  Future<void> _showMarkUnavailableConfirmation(Consultation consultation) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => ProfessorAvailabilityDialog(
+        consultation: consultation,
+      ),
+    );
 
+    if (result == true) {
+      setState(() {
+        consultation.status = ConsultationStatus.professorUnavailable;
+        _consultationService.updateConsultation(
+          consultation.id,
+          {'status': ConsultationStatus.professorUnavailable},
+        );
+        // Refresh the list to reflect changes
+        final index = consultations.indexWhere((c) => c.id == consultation.id);
+        if (index != -1) {
+          consultations[index] = consultation;
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Терминот е означен како неслободен'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
+  }
+  Future<void> _showDeleteConfirmation(Consultation consultation) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Избриши консултација',
+            style: TextStyle(
+              color: Color(0xFF000066),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+              'Дали сте сигурни дека сакате да ја избришете консултацијата закажана за '
+                  '${DateFormatter.formatDateTime(consultation.dateTime)}?'
+          ),
+          actions: [
+            TextButton(
+              child: Text(
+                'Откажи',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Избриши'),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _consultationService.deleteConsultation(consultation.id);
+        consultations.remove(consultation);
+      });
+    }
+  }
   Widget _buildFloatingActionButton() {
     return FloatingActionButton(
       backgroundColor: const Color(0xFF0099FF),
@@ -254,184 +384,207 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
   }
 
   void _showAddConsultationDialog(BuildContext context) {
-    DateTime selectedDate = DateTime.now();
-    TimeOfDay selectedTime = TimeOfDay.now();
-    String location = '';
-    String comment = '';
+    // Create state variables
+    late DateTime selectedDate;
+    late TimeOfDay selectedTime;
+    late String location;
+    late String comment;
+
+    // Initialize state
+    selectedDate = DateTime.now();
+    selectedTime = TimeOfDay.now();
+    location = '';
+    comment = '';
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Додади термин',
-          style: TextStyle(
-            color: Color(0xFF000066),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDialogListTile(
-                title: 'Датум',
-                subtitle: DateFormatter.formatDate(selectedDate),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 90)),
-                    builder: (context, child) {
-                      return Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: const ColorScheme.light(
-                            primary: Color(0xFF0099FF),
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {  // Renamed setState to setDialogState for clarity
+            return AlertDialog(
+              title: const Text(
+                'Додади термин',
+                style: TextStyle(
+                  color: Color(0xFF000066),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Датум'),
+                      subtitle: Text(DateFormatter.formatDate(selectedDate)),
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 90)),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Color(0xFF0099FF),
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (date != null) {
+                          setState(() {
+                            selectedDate = date;
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Час'),
+                      subtitle: Text(selectedTime.format(context)),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: selectedTime,
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: Color(0xFF0099FF),
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (time != null) {
+                          setState(() {
+                            selectedTime = time;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Просторија',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF0099FF),
+                            width: 2,
                           ),
                         ),
-                        child: child!,
-                      );
-                    },
-                  );
-                  if (date != null) selectedDate = date;
-                },
-              ),
-              _buildDialogListTile(
-                title: 'Час',
-                subtitle: selectedTime.format(context),
-                onTap: () async {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: selectedTime,
-                    builder: (context, child) {
-                      return Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: const ColorScheme.light(
-                            primary: Color(0xFF0099FF),
+                      ),
+                      onChanged: (value) => location = value,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Дополнителен коментар',
+                        alignLabelWithHint: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF0099FF),
+                            width: 2,
                           ),
                         ),
-                        child: child!,
-                      );
-                    },
-                  );
-                  if (time != null) selectedTime = time;
-                },
+                      ),
+                      onChanged: (value) => comment = value,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                label: 'Просторија',
-                onChanged: (value) => location = value,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                label: 'Дополнителен коментар',
-                onChanged: (value) => comment = value,
-                maxLines: 3,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            child: Text(
-              'Откажи',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0099FF),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Додади'),
-            onPressed: () {
-              if (location.isNotEmpty) {
-                final newConsultation = Consultation(
-                  id: DateTime.now().toString(),
-                  professorId: 'prof1',
-                  professorName: 'Проф1',
-                  dateTime: DateTime(
-                    selectedDate.year,
-                    selectedDate.month,
-                    selectedDate.day,
-                    selectedTime.hour,
-                    selectedTime.minute,
+              actions: [
+                TextButton(
+                  child: Text(
+                    'Откажи',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  durationMinutes: 30,
-                  location: location,
-                  comment: comment,
-                  status: ConsultationStatus.available,
-                );
+                  onPressed: () => Navigator.pop(context),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0099FF),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Додади'),
+                  onPressed: () {
+                    if (location.isNotEmpty) {
+                      // Create the new consultation
+                      final newConsultation = Consultation(
+                        id: DateTime.now().toString(),
+                        professorId: 'prof1',
+                        professorName: 'Проф1',
+                        dateTime: DateTime(
+                          selectedDate.year,
+                          selectedDate.month,
+                          selectedDate.day,
+                          selectedTime.hour,
+                          selectedTime.minute,
+                        ),
+                        durationMinutes: 30,
+                        location: location,
+                        comment: comment,
+                        status: ConsultationStatus.available,
+                      );
 
-                setState(() {
-                  _consultationService.addConsultation(newConsultation);
-                  _loadConsultations();
-                });
-                Navigator.pop(context);
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
+                      // Add to service and update parent state
+                      _consultationService.addConsultation(newConsultation);
 
-  Widget _buildDialogListTile({
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(
-        title,
-        style: TextStyle(
-          color: Colors.grey[700],
-          fontSize: 14,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(
-          color: Colors.black87,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
+                      // Use the parent's setState to update the main screen
+                      setState(() {  // This refers to the parent widget's setState
+                        consultations.add(newConsultation);
+                        _selectedDay = newConsultation.dateTime;
+                        _focusedDay = newConsultation.dateTime;
+                      });
 
-  Widget _buildTextField({
-    required String label,
-    required ValueChanged<String> onChanged,
-    int maxLines = 1,
-  }) {
-    return TextField(
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        alignLabelWithHint: maxLines > 1,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Color(0xFF0099FF),
-            width: 2,
-          ),
-        ),
-      ),
-      onChanged: onChanged,
-    );
+                      // Show success message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Консултацијата е успешно додадена'),
+                          backgroundColor: Colors.green,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                        ),
+                      );
+
+                      Navigator.pop(context);
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      // This will run after the dialog is closed
+      setState(() {
+        // Force refresh the view
+        consultations = List.from(consultations);
+      });
+    });
   }
 }

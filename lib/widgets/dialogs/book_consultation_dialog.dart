@@ -19,7 +19,19 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
   final _reasonController = TextEditingController();
   String? selectedSubject;
   final List<String> subjects = ['Предмет 1', 'Предмет 2', 'Предмет 3'];
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with existing values if available
+    selectedSubject = widget.consultation.subject;
+    _reasonController.text = widget.consultation.bookingReason ?? '';
+  }
 
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -78,6 +90,20 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
           'Време: ${DateFormatter.formatTime(widget.consultation.dateTime)}',
           style: const TextStyle(fontSize: 16),
         ),
+        if (widget.consultation.location.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Просторија: ${widget.consultation.location}',
+            style: const TextStyle(fontSize: 16),
+          ),
+        ],
+        if (widget.consultation.comment.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Коментар: ${widget.consultation.comment}',
+            style: const TextStyle(fontSize: 16),
+          ),
+        ],
       ],
     );
   }
@@ -96,6 +122,7 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
             width: 2,
           ),
         ),
+        errorText: selectedSubject == null ? 'Задолжително поле' : null,
       ),
       value: selectedSubject,
       items: subjects.map((subject) {
@@ -129,6 +156,7 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
             width: 2,
           ),
         ),
+        errorText: _reasonController.text.isEmpty ? 'Задолжително поле' : null,
       ),
     );
   }
@@ -175,7 +203,25 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
 
   void _handleConfirm(BuildContext context) {
     if (selectedSubject != null && _reasonController.text.isNotEmpty) {
-      Navigator.pop(context, true);
+      // Return the map with booking details
+      Map<String, dynamic> result = {
+        'subject': selectedSubject,
+        'reason': _reasonController.text,
+      };
+      Navigator.of(context).pop(result);  // Make sure to return the map
+    } else {
+      // Show error message if fields are not filled
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Ве молиме пополнете ги сите полиња'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
     }
   }
 }

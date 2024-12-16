@@ -1,6 +1,7 @@
 // lib/widgets/consultation_card.dart
 import 'package:flutter/material.dart';
 import '../models/consultation.dart';
+import '../screens/consultation_students/consultation_students_screen.dart';
 import '../screens/messaging_screen/messaging_screen.dart';
 import '../utils/date_formatter.dart';
 import 'dialogs/edit_consultation_dialog.dart';
@@ -41,7 +42,77 @@ class ConsultationCard extends StatelessWidget {
       ),
     );
   }
+// In ConsultationCard
+  Widget _buildStudentDetails() {
+    if (!isProfessor || consultation.status != ConsultationStatus.booked) {
+      return const SizedBox.shrink();
+    }
 
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF0099FF).withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Закажано од:',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.person, size: 16, color: Color(0xFF0099FF)),
+              const SizedBox(width: 8),
+              Text(
+                consultation.studentName ?? 'Непознат студент',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          if (consultation.subject != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.book, size: 16, color: Color(0xFF0099FF)),
+                const SizedBox(width: 8),
+                Text(
+                  consultation.subject!,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ],
+          if (consultation.bookingReason != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.comment, size: 16, color: Color(0xFF0099FF)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    consultation.bookingReason!,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -59,6 +130,7 @@ class ConsultationCard extends StatelessWidget {
     );
   }
 
+  // In ConsultationCard
   Widget _buildStatusBadge() {
     Color statusColor;
     String statusText;
@@ -76,30 +148,25 @@ class ConsultationCard extends StatelessWidget {
         statusColor = const Color(0xFF9E9E9E);
         statusText = 'Завршен';
         break;
-      case ConsultationStatus.cancelled:
-        statusColor = const Color(0xFFF44336);
-        statusText = 'Откажан';
-        break;
-      case ConsultationStatus.professorUnavailable:
-        statusColor = const Color(0xFFFF9800);
-        statusText = 'Неслободен';
-        break;
+      default:
+        statusColor = Colors.grey;
+        statusText = 'Непознат';
     }
 
     return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-    color: statusColor.withOpacity(0.1),
-    borderRadius: BorderRadius.circular(20),
-    ),
-    child: Text(
-    statusText,
-    style: TextStyle(
-    color: statusColor,
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    ),
-    ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        statusText,
+        style: TextStyle(
+          color: statusColor,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
@@ -184,23 +251,59 @@ class ConsultationCard extends StatelessWidget {
     );
   }
 
+  // In ConsultationCard, update the _buildActions method
   Widget _buildActions(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (consultation.status != ConsultationStatus.completed) ...[
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
             _buildMessageButton(context),
             const SizedBox(width: 8),
             if (isProfessor) ...[
-              _buildProfessorActions(context),
+              if (consultation.status == ConsultationStatus.booked)
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.people),
+                  label: const Text('Закажани студенти'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0099FF),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ConsultationStudentsScreen(
+                          consultation: consultation,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              IconButton(
+                icon: const Icon(Icons.edit, color: Color(0xFF0099FF)),
+                onPressed: onEdit != null ? () => _showEditDialog(context) : null,
+              ),
             ] else ...[
-              _buildStudentActions(context),
+              if (consultation.status == ConsultationStatus.available)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0099FF),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Закажи'),
+                  onPressed: onBook,
+                ),
+              if (consultation.status == ConsultationStatus.booked &&
+                  consultation.studentId == 'student1') // Replace with actual student ID
+                IconButton(
+                  icon: const Icon(Icons.cancel, color: Colors.red),
+                  onPressed: onCancel,
+                ),
             ],
           ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 

@@ -33,14 +33,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   void _loadConsultations() {
-    availableConsultations = _consultationService.getAvailableConsultations(
-      DateTime.now(),
-      DateTime.now().add(const Duration(days: 30)),
-      selectedProfessor == 'Сите' ? null : selectedProfessor,
-      selectedSubject,
-    );
+    availableConsultations = _consultationService.getAllConsultations();
     setState(() {});
   }
+
 
   List<Consultation> get filteredConsultations {
     return availableConsultations.where((consultation) {
@@ -357,16 +353,24 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
 
     if (result != null) {
+      // Create the booking details
+      final bookingDetails = {
+        'studentId': 'student1', // Replace with actual student ID
+        'studentName': 'Студент 1', // Replace with actual student name
+        'subject': result['subject'],
+        'reason': result['reason'],
+        'status': ConsultationStatus.booked,
+      };
+
       setState(() {
-        _consultationService.updateConsultation(consultation.id, {
-          'studentId': 'student1', // Replace with actual student ID
-          'studentName': 'Студент 1', // Replace with actual student name
-          'subject': result['subject'],
-          'reason': result['reason'],
-          'status': ConsultationStatus.booked,
-        });
+        // Update both service and local state
+        _consultationService.updateConsultation(consultation.id, bookingDetails);
+        consultation.status = ConsultationStatus.booked;
+        // Refresh the list
         _loadConsultations();
       });
+
+      // Show success message
       _showBookingConfirmation();
     }
   }
