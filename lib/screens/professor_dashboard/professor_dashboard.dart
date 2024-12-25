@@ -1,13 +1,14 @@
 // lib/screens/professor/professor_dashboard.dart
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/enum/ConsultationStatus.dart';
+import 'package:konsultacii/services/ConsultationService.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../models/consultation.dart';
+import '../../models/response/ConsultationsResponse.dart';
 import '../../widgets/consultation_card.dart';
 import '../../utils/date_formatter.dart';
-import '../../services/consultation_service.dart';
-import '../../utils/consultation_helper.dart';
-import '../../widgets/dialogs/edit_consultation_dialog.dart';
 import '../../widgets/dialogs/professor_availability_dialog.dart';
+
 class ProfessorDashboard extends StatefulWidget {
   const ProfessorDashboard({Key? key}) : super(key: key);
 
@@ -17,7 +18,13 @@ class ProfessorDashboard extends StatefulWidget {
 
 class _ProfessorDashboardState extends State<ProfessorDashboard> {
   final ConsultationService _consultationService = ConsultationService();
-  List<Consultation> consultations = [];
+  List<ConsultationResponse> consultations = [];
+  List<DateTime> daysWithConsultations = [];
+  bool _isLoading = false;
+  bool _isLoadingDayEvents = false;
+  String? _error;
+
+  // List<Consultation> consultations = [];
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -26,50 +33,75 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadConsultations();
+    _loadDaysWithEvents();
   }
 
-  void _loadConsultations() {
-    consultations = _consultationService.getConsultationsForProfessor('prof1');
-    setState(() {});
+  Future<void> _loadEventsForDay(DateTime day) async {
+    if (_isLoadingDayEvents) return;
+
+    setState(() {
+      _isLoadingDayEvents = true;
+    });
+
+    try {
+      final events = await _consultationService
+          .getAllConsultationsByDateAndProfessorId(day, null);
+      setState(() {
+        consultations = events;
+      });
+    } catch (e) {
+      print('Error loading events for day: $e');
+    } finally {
+      setState(() {
+        _isLoadingDayEvents = false;
+      });
+    }
   }
 
-  List<Consultation> _getConsultationsForDay(DateTime day) {
+  Future<void> _loadDaysWithEvents() async {
+    try {
+      final response =
+          await _consultationService.getDaysOfUpcomingConsultations();
+      setState(() {
+        daysWithConsultations = response;
+      });
+    } catch (e) {
+      print('Error loading days with events: $e');
+    }
+  }
+
+  List<int> _getEventsForDay(DateTime day) {
+    if (daysWithConsultations.contains(DateUtils.dateOnly(day))) {
+      return [1];
+    }
+    return [];
+  }
+
+  List<ConsultationResponse> _getConsultationsForDay(DateTime day) {
     if (consultations.isEmpty) {
       return [];
     }
     return consultations.where((consultation) {
-      if (consultation.dateTime == null) return false;
-      return DateUtils.isSameDay(consultation.dateTime, day);
+      return DateUtils.isSameDay(consultation.date, day);
     }).toList();
   }
 
-  void _handleEditConsultation(Consultation consultation, Map<String, dynamic> updates) {
+  void _handleEditConsultation(
+      ConsultationResponse consultation, ConsultationResponse updatedConsultation) {
     setState(() {
-      if (updates.containsKey('dateTime')) {
-        consultation.updateDetails(
-          newDateTime: updates['dateTime'] as DateTime,
-          newLocation: updates['location'] as String?,
-          newComment: updates['comment'] as String?,
-        );
-      }
+      // _consultationService.updateConsultation(consultation.id, updates);
 
-      _consultationService.updateConsultation(consultation.id, updates);
-
-      // Update in local list
       final index = consultations.indexWhere((c) => c.id == consultation.id);
       if (index != -1) {
-        consultations[index] = consultation;
+        consultations[index] = updatedConsultation;
       }
-
-      // Update selected day if date changed
-      if (updates.containsKey('dateTime')) {
-        _selectedDay = updates['dateTime'] as DateTime;
-        _focusedDay = updates['dateTime'] as DateTime;
-      }
+      //
+      // if (updates.containsKey('dateTime')) {
+      //   _selectedDay = updates['dateTime'] as DateTime;
+      //   _focusedDay = updates['dateTime'] as DateTime;
+      // }
     });
 
-    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Консултацијата е успешно изменета'),
@@ -144,9 +176,27 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
       children: [
         _buildCalendar(),
         const Divider(height: 1),
-        Expanded(
-          child: _buildConsultationsForSelectedDay(),
-        ),
+        if (_selectedDay != null) ...[
+          const SizedBox(height: 20),
+          _isLoadingDayEvents
+              ? const Expanded(
+                  child: Center(
+                    child: SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: CircularProgressIndicator(
+                        strokeWidth:
+                            4,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(
+                            0xFF0099FF)), // Optional: match your theme color
+                      ),
+                    ),
+                  ),
+                )
+              : Expanded(
+                  child: _buildConsultationsForSelectedDay(),
+                ),
+        ],
       ],
     );
   }
@@ -169,19 +219,21 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
         focusedDay: _focusedDay,
         calendarFormat: _calendarFormat,
         selectedDayPredicate: (day) =>
-        _selectedDay != null && isSameDay(_selectedDay!, day),
+            _selectedDay != null && isSameDay(_selectedDay!, day),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
             _selectedDay = selectedDay;
             _focusedDay = focusedDay;
           });
+
+          _loadEventsForDay(selectedDay);
         },
         onFormatChanged: (format) {
           setState(() {
             _calendarFormat = format;
           });
         },
-        eventLoader: (day) => _getConsultationsForDay(day),
+        eventLoader: (day) => _getEventsForDay(day),
         calendarStyle: CalendarStyle(
           markersMaxCount: 3,
           markerSize: 8,
@@ -251,8 +303,10 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
             consultation: consultationsForDay[index],
             isProfessor: true,
             onDelete: () => _showDeleteConfirmation(consultationsForDay[index]),
-            onEdit: (updates) => _handleEditConsultation(consultationsForDay[index], updates),
-            onMarkUnavailable: () => _showMarkUnavailableConfirmation(consultationsForDay[index]),
+            onEdit: (updates) =>
+                _handleEditConsultation(consultationsForDay[index], updates),
+            onMarkUnavailable: () =>
+                _showMarkUnavailableConfirmation(consultationsForDay[index]),
           ),
         );
       },
@@ -285,14 +339,18 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
             consultation: consultations[index],
             isProfessor: true,
             onDelete: () => _showDeleteConfirmation(consultations[index]),
-            onEdit: (updates) => _handleEditConsultation(consultations[index], updates),
-            onMarkUnavailable: () => _showMarkUnavailableConfirmation(consultations[index]),
+            onEdit: (updates) =>
+                _handleEditConsultation(consultations[index], updates),
+            onMarkUnavailable: () =>
+                _showMarkUnavailableConfirmation(consultations[index]),
           ),
         );
       },
     );
   }
-  Future<void> _showMarkUnavailableConfirmation(Consultation consultation) async {
+
+  Future<void> _showMarkUnavailableConfirmation(
+      ConsultationResponse consultation) async {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => ProfessorAvailabilityDialog(
@@ -302,12 +360,11 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
     if (result == true) {
       setState(() {
-        consultation.status = ConsultationStatus.professorUnavailable;
-        _consultationService.updateConsultation(
-          consultation.id,
-          {'status': ConsultationStatus.professorUnavailable},
-        );
-        // Refresh the list to reflect changes
+        // consultation.status = ConsultationStatus.professorUnavailable;
+        // _consultationService.updateConsultation(
+        //   consultation.id,
+        //   {'status': ConsultationStatus.professorUnavailable},
+        // );
         final index = consultations.indexWhere((c) => c.id == consultation.id);
         if (index != -1) {
           consultations[index] = consultation;
@@ -327,7 +384,9 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
       );
     }
   }
-  Future<void> _showDeleteConfirmation(Consultation consultation) async {
+
+  Future<void> _showDeleteConfirmation(
+      ConsultationResponse consultation) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -341,8 +400,7 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
           ),
           content: Text(
               'Дали сте сигурни дека сакате да ја избришете консултацијата закажана за '
-                  '${DateFormatter.formatDateTime(consultation.dateTime)}?'
-          ),
+              '${DateFormatter.formatDateTime(consultation.date)}?'),
           actions: [
             TextButton(
               child: Text(
@@ -369,11 +427,12 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
     if (confirmed == true) {
       setState(() {
-        _consultationService.deleteConsultation(consultation.id);
+        // _consultationService.deleteConsultation(consultation.id);
         consultations.remove(consultation);
       });
     }
   }
+
   Widget _buildFloatingActionButton() {
     return FloatingActionButton(
       backgroundColor: const Color(0xFF0099FF),
@@ -384,13 +443,11 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
   }
 
   void _showAddConsultationDialog(BuildContext context) {
-    // Create state variables
     late DateTime selectedDate;
     late TimeOfDay selectedTime;
     late String location;
     late String comment;
 
-    // Initialize state
     selectedDate = DateTime.now();
     selectedTime = TimeOfDay.now();
     location = '';
@@ -400,7 +457,7 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
       context: context,
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {  // Renamed setState to setDialogState for clarity
+          builder: (context, setDialogState) {
             return AlertDialog(
               title: const Text(
                 'Додади термин',
@@ -422,7 +479,8 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
                           context: context,
                           initialDate: selectedDate,
                           firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(const Duration(days: 90)),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 90)),
                           builder: (context, child) {
                             return Theme(
                               data: Theme.of(context).copyWith(
@@ -529,7 +587,6 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
                   child: const Text('Додади'),
                   onPressed: () {
                     if (location.isNotEmpty) {
-                      // Create the new consultation
                       final newConsultation = Consultation(
                         id: DateTime.now().toString(),
                         professorId: 'prof1',
@@ -544,23 +601,21 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
                         durationMinutes: 30,
                         location: location,
                         comment: comment,
-                        status: ConsultationStatus.available,
+                        status: ConsultationStatus.ACTIVE,
                       );
 
-                      // Add to service and update parent state
-                      _consultationService.addConsultation(newConsultation);
+                      // _consultationService.addConsultation(newConsultation);
 
-                      // Use the parent's setState to update the main screen
-                      setState(() {  // This refers to the parent widget's setState
-                        consultations.add(newConsultation);
+                      setState(() {
+                        // consultations.add(newConsultation);
                         _selectedDay = newConsultation.dateTime;
                         _focusedDay = newConsultation.dateTime;
                       });
 
-                      // Show success message
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Консултацијата е успешно додадена'),
+                          content:
+                              const Text('Консултацијата е успешно додадена'),
                           backgroundColor: Colors.green,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
@@ -580,9 +635,7 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
         );
       },
     ).then((_) {
-      // This will run after the dialog is closed
       setState(() {
-        // Force refresh the view
         consultations = List.from(consultations);
       });
     });

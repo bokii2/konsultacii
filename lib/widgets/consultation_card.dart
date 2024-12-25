@@ -1,5 +1,7 @@
 // lib/widgets/consultation_card.dart
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/enum/ConsultationStatus.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import '../models/consultation.dart';
 import '../screens/consultation_students/consultation_students_screen.dart';
 import '../screens/messaging_screen/messaging_screen.dart';
@@ -8,11 +10,11 @@ import 'dialogs/edit_consultation_dialog.dart';
 import 'dialogs/professor_availability_dialog.dart';
 
 class ConsultationCard extends StatelessWidget {
-  final Consultation consultation;
+  final ConsultationResponse consultation;
   final bool isProfessor;
   final VoidCallback? onDelete;
   final VoidCallback? onBook;
-  final Function(Map<String, dynamic>)? onEdit;
+  final Function(ConsultationResponse)? onEdit;
   final VoidCallback? onMarkUnavailable;
   final VoidCallback? onCancel;
 
@@ -30,21 +32,25 @@ class ConsultationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          _buildDetails(),
-          if (consultation.bookingReason != null)
-            _buildBookingDetails(),
-          _buildActions(context),
-        ],
-      ),
-    );
+        color: Colors.white,
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              _buildDetails(),
+              // if (consultation.bookingReason != null)
+              //   _buildBookingDetails(),
+              _buildActions(context),
+            ],
+          ),
+        ));
   }
+
 // In ConsultationCard
   Widget _buildStudentDetails() {
-    if (!isProfessor || consultation.status != ConsultationStatus.booked) {
+    if (!isProfessor || consultation.status != ConsultationStatus.ACTIVE) {
       return const SizedBox.shrink();
     }
 
@@ -73,7 +79,8 @@ class ConsultationCard extends StatelessWidget {
               const Icon(Icons.person, size: 16, color: Color(0xFF0099FF)),
               const SizedBox(width: 8),
               Text(
-                consultation.studentName ?? 'Непознат студент',
+                '',
+                // consultation.studentName ?? 'Непознат студент',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -81,20 +88,7 @@ class ConsultationCard extends StatelessWidget {
               ),
             ],
           ),
-          if (consultation.subject != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.book, size: 16, color: Color(0xFF0099FF)),
-                const SizedBox(width: 8),
-                Text(
-                  consultation.subject!,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-          ],
-          if (consultation.bookingReason != null) ...[
+          if (consultation.studentInstruction != null) ...[
             const SizedBox(height: 8),
             Row(
               children: [
@@ -102,7 +96,7 @@ class ConsultationCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    consultation.bookingReason!,
+                    consultation.studentInstruction!,
                     style: const TextStyle(fontSize: 14),
                   ),
                 ),
@@ -113,16 +107,21 @@ class ConsultationCard extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          consultation.professorName,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF000066),
+        Expanded(
+          child: Text(
+            consultation.professor,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF000066),
+            ),
+            overflow: TextOverflow.visible,
+            softWrap: true,
           ),
         ),
         _buildStatusBadge(),
@@ -136,17 +135,13 @@ class ConsultationCard extends StatelessWidget {
     String statusText;
 
     switch (consultation.status) {
-      case ConsultationStatus.available:
+      case ConsultationStatus.ACTIVE:
         statusColor = const Color(0xFF4CAF50);
-        statusText = 'Слободен';
+        statusText = 'Активен';
         break;
-      case ConsultationStatus.booked:
-        statusColor = const Color(0xFF0099FF);
-        statusText = 'Закажан';
-        break;
-      case ConsultationStatus.completed:
+      case ConsultationStatus.INACTIVE:
         statusColor = const Color(0xFF9E9E9E);
-        statusText = 'Завршен';
+        statusText = 'Неактивен';
         break;
       default:
         statusColor = Colors.grey;
@@ -179,32 +174,33 @@ class ConsultationCard extends StatelessWidget {
           _buildInfoRow(
             icon: Icons.event,
             label: 'Датум:',
-            value: DateFormatter.formatDate(consultation.dateTime),
+            value: DateFormatter.formatDate(consultation.date),
           ),
           const SizedBox(height: 8),
           _buildInfoRow(
             icon: Icons.access_time,
             label: 'Време:',
-            value: DateFormatter.formatTime(consultation.dateTime),
+            value:
+                '${consultation.startTime.hour.toString().padLeft(2, '0')}:${consultation.startTime.minute.toString().padLeft(2, '0')} - ${consultation.endTime.hour.toString().padLeft(2, '0')}:${consultation.endTime.minute.toString().padLeft(2, '0')}',
           ),
           const SizedBox(height: 8),
           _buildInfoRow(
             icon: Icons.location_on,
             label: 'Просторија:',
-            value: consultation.location,
+            value: consultation.room,
           ),
           const SizedBox(height: 8),
           _buildInfoRow(
             icon: Icons.timer,
-            label: 'Времетраење:',
-            value: '${consultation.durationMinutes} минути',
+            label: 'Online:',
+            value: '${(consultation.online ?? false) ? "Да" : "Не"}',
           ),
-          if (consultation.comment.isNotEmpty) ...[
+          if (consultation.studentInstruction.isNotEmpty) ...[
             const SizedBox(height: 8),
             _buildInfoRow(
               icon: Icons.comment,
-              label: 'Коментар:',
-              value: consultation.comment,
+              label: 'Дополнителни инструкции:',
+              value: consultation.studentInstruction,
             ),
           ],
         ],
@@ -224,26 +220,26 @@ class ConsultationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (consultation.studentName != null)
-            _buildInfoRow(
-              icon: Icons.person,
-              label: 'Студент:',
-              value: consultation.studentName!,
-            ),
-          if (consultation.subject != null) ...[
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              icon: Icons.book,
-              label: 'Предмет:',
-              value: consultation.subject!,
-            ),
-          ],
-          if (consultation.bookingReason != null) ...[
+          //   // if (consultation.studentName != null)
+          //   //   _buildInfoRow(
+          //   //     icon: Icons.person,
+          //   //     label: 'Студент:',
+          //   //     value: consultation.studentName!,
+          //   //   ),
+          //   // if (consultation.subject != null) ...[
+          //   //   const SizedBox(height: 8),
+          //   //   _buildInfoRow(
+          //   //     icon: Icons.book,
+          //   //     label: 'Предмет:',
+          //   //     value: consultation.subject!,
+          //   //   ),
+          //   ],
+          if (consultation.studentInstruction != null) ...[
             const SizedBox(height: 8),
             _buildInfoRow(
               icon: Icons.info_outline,
               label: 'Причина:',
-              value: consultation.bookingReason!,
+              value: consultation.studentInstruction,
             ),
           ],
         ],
@@ -252,16 +248,73 @@ class ConsultationCard extends StatelessWidget {
   }
 
   // In ConsultationCard, update the _buildActions method
+  // Widget _buildActions(BuildContext context) {
+  //   return Column(
+  //     children: [
+  //       Row(
+  //         mainAxisAlignment: MainAxisAlignment.end,
+  //         children: [
+  //           _buildMessageButton(context),
+  //           const SizedBox(width: 8),
+  //           if (isProfessor) ...[
+  //             if (consultation.status == ConsultationStatus.ACTIVE)
+  //               ElevatedButton.icon(
+  //                 icon: const Icon(Icons.people),
+  //                 label: const Text('Закажани студенти'),
+  //                 style: ElevatedButton.styleFrom(
+  //                   backgroundColor: const Color(0xFF0099FF),
+  //                   foregroundColor: Colors.white,
+  //                 ),
+  //                 onPressed: () {
+  //                   Navigator.push(
+  //                     context,
+  //                     MaterialPageRoute(
+  //                       builder: (context) => ConsultationStudentsScreen(
+  //                         consultation: consultation,
+  //                       ),
+  //                     ),
+  //                   );
+  //                 },
+  //               ),
+  //             IconButton(
+  //               icon: const Icon(Icons.edit, color: Color(0xFF0099FF)),
+  //               onPressed:
+  //                   onEdit != null ? () => _showEditDialog(context) : null,
+  //             ),
+  //           ] else ...[
+  //             if (consultation.status == ConsultationStatus.ACTIVE)
+  //               ElevatedButton(
+  //                 style: ElevatedButton.styleFrom(
+  //                   backgroundColor: const Color(0xFF0099FF),
+  //                   foregroundColor: Colors.white,
+  //                 ),
+  //                 child: const Text('Закажи'),
+  //                 onPressed: onBook,
+  //               ),
+  //             if (consultation.status == ConsultationStatus.ACTIVE &&
+  //                 true) // Replace with actual student ID
+  //               IconButton(
+  //                 icon: const Icon(Icons.cancel, color: Colors.red),
+  //                 onPressed: onCancel,
+  //               ),
+  //           ],
+  //         ],
+  //       ),
+  //     ],
+  //   );
+  // }
+
   Widget _buildActions(BuildContext context) {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8.0, // Horizontal spacing between widgets
+          runSpacing: 4.0, // Vertical spacing between rows if wrapped
           children: [
-            _buildMessageButton(context),
-            const SizedBox(width: 8),
+            // _buildMessageButton(context),
             if (isProfessor) ...[
-              if (consultation.status == ConsultationStatus.booked)
+              if (consultation.status == ConsultationStatus.ACTIVE)
                 ElevatedButton.icon(
                   icon: const Icon(Icons.people),
                   label: const Text('Закажани студенти'),
@@ -282,10 +335,11 @@ class ConsultationCard extends StatelessWidget {
                 ),
               IconButton(
                 icon: const Icon(Icons.edit, color: Color(0xFF0099FF)),
-                onPressed: onEdit != null ? () => _showEditDialog(context) : null,
+                onPressed:
+                    onEdit != null ? () => _showEditDialog(context) : null,
               ),
             ] else ...[
-              if (consultation.status == ConsultationStatus.available)
+              if (consultation.status == ConsultationStatus.ACTIVE)
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0099FF),
@@ -294,8 +348,8 @@ class ConsultationCard extends StatelessWidget {
                   child: const Text('Закажи'),
                   onPressed: onBook,
                 ),
-              if (consultation.status == ConsultationStatus.booked &&
-                  consultation.studentId == 'student1') // Replace with actual student ID
+              if (consultation.status == ConsultationStatus.ACTIVE &&
+                  true) // Replace with actual student ID
                 IconButton(
                   icon: const Icon(Icons.cancel, color: Colors.red),
                   onPressed: onCancel,
@@ -328,7 +382,7 @@ class ConsultationCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (consultation.status == ConsultationStatus.available) ...[
+        if (consultation.status == ConsultationStatus.ACTIVE) ...[
           IconButton(
             icon: const Icon(Icons.edit, color: Color(0xFF0099FF)),
             onPressed: () => _showEditDialog(context),
@@ -342,7 +396,7 @@ class ConsultationCard extends StatelessWidget {
             onPressed: onDelete,
           ),
         ],
-        if (consultation.status == ConsultationStatus.booked) ...[
+        if (consultation.status == ConsultationStatus.ACTIVE) ...[
           IconButton(
             icon: const Icon(Icons.edit, color: Color(0xFF0099FF)),
             onPressed: () => _showEditDialog(context),
@@ -353,7 +407,7 @@ class ConsultationCard extends StatelessWidget {
   }
 
   Widget _buildStudentActions(BuildContext context) {
-    if (consultation.status == ConsultationStatus.available && onBook != null) {
+    if (consultation.status == ConsultationStatus.ACTIVE && onBook != null) {
       return ElevatedButton.icon(
         icon: const Icon(Icons.calendar_month, size: 20),
         label: const Text('Закажи'),
@@ -368,8 +422,7 @@ class ConsultationCard extends StatelessWidget {
       );
     }
 
-    if (consultation.status == ConsultationStatus.booked &&
-        consultation.studentId != null) {
+    if (consultation.status == ConsultationStatus.ACTIVE && true) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -432,17 +485,17 @@ class ConsultationCard extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (context) => MessagingScreen(
-          professorId: consultation.professorId,
-          professorName: consultation.professorName,
-          studentId: consultation.studentId ?? 'student1',
-          studentName: consultation.studentName ?? 'Студент 1',
+          professorId: 'consultation.professorId',
+          professorName: 'consultation.professorName',
+          studentId: 'student1',
+          studentName: 'Студент 1',
         ),
       ),
     );
   }
 
   Future<void> _showEditDialog(BuildContext context) async {
-    final result = await showDialog<Map<String, dynamic>>(
+    final result = await showDialog<ConsultationResponse>(
       context: context,
       builder: (context) => EditConsultationDialog(
         consultation: consultation,

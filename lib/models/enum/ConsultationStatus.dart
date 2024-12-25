@@ -1,0 +1,4 @@
+enum ConsultationStatus {
+    ACTIVE,
+    INACTIVE
+}

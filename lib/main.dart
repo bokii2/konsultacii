@@ -14,12 +14,35 @@ class ConsultationApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Consultation Scheduler',
+      title: 'ФИНКИ - Консултации',
       theme: ThemeData(
-        primarySwatch: Colors.indigo,
+        colorScheme: ColorScheme.light(
+          primary: Colors.lightBlue,
+          secondary: Colors.lightBlue[300]!,
+        ),
+
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.black87),
+          bodyMedium: TextStyle(color: Colors.black87),
+          titleLarge: TextStyle(color: Colors.black87),
+        ),
+
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.lightBlue,
+          foregroundColor: Colors.white,
+        ),
+
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.lightBlue,
+            foregroundColor: Colors.white,
+          ),
+        ),
+
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
+
       home: const RoleSelectionScreen(),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,

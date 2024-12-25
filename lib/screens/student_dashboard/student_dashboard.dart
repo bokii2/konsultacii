@@ -1,7 +1,10 @@
 // lib/screens/student/student_dashboard.dart
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
+import 'package:konsultacii/services/ConsultationService.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../models/consultation.dart';
+import '../../models/enum/ConsultationStatus.dart';
 import '../../widgets/consultation_card.dart';
 import '../../widgets/dialogs/book_consultation_dialog.dart';
 import '../../services/consultation_service.dart';
@@ -16,12 +19,19 @@ class StudentDashboard extends StatefulWidget {
 
 class _StudentDashboardState extends State<StudentDashboard> {
   final ConsultationService _consultationService = ConsultationService();
-  List<Consultation> availableConsultations = [];
-  String selectedProfessor = 'Сите';
-  List<String> professors = ['Сите', 'Проф1', 'Проф2', 'Проф3'];
+  bool _isLoading = false;
+  String? _error;
+  List<ConsultationResponse> consultations = [];
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+
+  // List<ConsultationResponse> availableConsultations = [];
+  String selectedProfessor = 'Сите';
+  List<String> professors = ['Сите', 'Проф1', 'Проф2', 'Проф3'];
+  // CalendarFormat _calendarFormat = CalendarFormat.week;
+  // DateTime _focusedDay = DateTime.now();
+  // DateTime? _selectedDay;
   String? selectedSubject;
   List<String> subjects = ['Предмет 1', 'Предмет 2', 'Предмет 3'];
 
@@ -32,25 +42,36 @@ class _StudentDashboardState extends State<StudentDashboard> {
     _loadConsultations();
   }
 
-  void _loadConsultations() {
-    availableConsultations = _consultationService.getAllConsultations();
-    setState(() {});
+  Future<void> _loadConsultations() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await _consultationService.getUpcomingConsultations();
+      setState(() {
+        consultations = response;
+        _error = null;
+      });
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
 
-  List<Consultation> get filteredConsultations {
-    return availableConsultations.where((consultation) {
-      if (selectedProfessor != 'Сите' &&
-          consultation.professorName != selectedProfessor) {
-        return false;
-      }
-      return true;
-    }).toList();
+  List<ConsultationResponse> get filteredConsultations {
+    // return availableConsultations.where((consultation) {
+    //   if (selectedProfessor != 'Сите' &&
+    //       consultation.professorName != selectedProfessor) {
+    //     return false;
+    //   }
+    //   return true;
+    // }).toList();
+    return [];
   }
 
-  List<Consultation> _getConsultationsForDay(DateTime day) {
+  List<ConsultationResponse> _getConsultationsForDay(DateTime day) {
     return filteredConsultations.where((consultation) {
-      return DateUtils.isSameDay(consultation.dateTime, day);
+      return DateUtils.isSameDay(consultation.date, day);
     }).toList();
   }
 
@@ -296,7 +317,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Widget _buildConsultationsForSelectedDay() {
-    final consultationsForDay = _getConsultationsForDay(_selectedDay!);
+    // final consultationsForDay = _getConsultationsForDay(_selectedDay!);
+    final List<ConsultationResponse> consultationsForDay = [];
 
     if (consultationsForDay.isEmpty) {
       return Center(
@@ -317,7 +339,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     return _buildConsultationsList(filteredConsultations);
   }
 
-  Widget _buildConsultationsList(List<Consultation> consultations) {
+  Widget _buildConsultationsList(List<ConsultationResponse> consultations) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: consultations.length,
@@ -328,15 +350,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
           child: ConsultationCard(
             consultation: consultation,
             isProfessor: false,
-            onBook: consultation.status == ConsultationStatus.available
+            onBook: consultation.status == ConsultationStatus.ACTIVE
                 ? () => _handleBookConsultation(consultation)
                 : null,
-            onCancel: consultation.status == ConsultationStatus.booked &&
-                consultation.studentId == 'student1' // Replace with actual student ID
+            onCancel: consultation.status == ConsultationStatus.ACTIVE && true
+                // consultation.studentId == 'student1' // Replace with actual student ID
                 ? () => _handleCancelConsultation(consultation)
                 : null,
-            onEdit: consultation.status == ConsultationStatus.booked &&
-                consultation.studentId == 'student1' // Replace with actual student ID
+            onEdit: consultation.status == ConsultationStatus.ACTIVE && true
+                // consultation.studentId == 'student1' // Replace with actual student ID
                 ? (updates) => _handleEditConsultation(consultation, updates)
                 : null,
           ),
@@ -344,7 +366,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
       },
     );
   }
-  void _handleBookConsultation(Consultation consultation) async {
+  void _handleBookConsultation(ConsultationResponse consultation) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => BookConsultationDialog(
@@ -353,19 +375,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
 
     if (result != null) {
-      // Create the booking details
       final bookingDetails = {
-        'studentId': 'student1', // Replace with actual student ID
-        'studentName': 'Студент 1', // Replace with actual student name
+        'studentId': 'student1',
+        'studentName': 'Студент 1',
         'subject': result['subject'],
         'reason': result['reason'],
-        'status': ConsultationStatus.booked,
+        'status': ConsultationStatus.ACTIVE,
       };
 
       setState(() {
-        // Update both service and local state
-        _consultationService.updateConsultation(consultation.id, bookingDetails);
-        consultation.status = ConsultationStatus.booked;
+        // _consultationService.updateConsultation(consultation.id, bookingDetails);
+        // consultation.status = ConsultationStatus.ACTIVE;
         // Refresh the list
         _loadConsultations();
       });
@@ -375,7 +395,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     }
   }
 
-  void _handleCancelConsultation(Consultation consultation) async {
+  void _handleCancelConsultation(ConsultationResponse consultation) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -400,19 +420,19 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     if (confirmed == true) {
       setState(() {
-        _consultationService.updateConsultation(
-          consultation.id,
-          {'status': ConsultationStatus.available},
-        );
+        // _consultationService.updateConsultation(
+        //   consultation.id,
+        //   {'status': ConsultationStatus.available},
+        // );
         _loadConsultations();
       });
       _showCancelConfirmation();
     }
   }
 
-  void _handleEditConsultation(Consultation consultation, Map<String, dynamic> updates) {
+  void _handleEditConsultation(ConsultationResponse consultation, ConsultationResponse updatedConsultation) {
     setState(() {
-      _consultationService.updateConsultation(consultation.id, updates);
+      // _consultationService.updateConsultation(consultation.id, updates);
       _loadConsultations();
     });
   }

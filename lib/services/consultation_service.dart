@@ -1,11 +1,11 @@
 // lib/services/consultation_service.dart
 import '../models/consultation.dart';
+import '../models/enum/ConsultationStatus.dart';
 
-// lib/services/consultation_service.dart
-class ConsultationService {
-  static final ConsultationService _instance = ConsultationService._internal();
-  factory ConsultationService() => _instance;
-  ConsultationService._internal();
+class BinBin {
+  static final BinBin _instance = BinBin._internal();
+  factory BinBin() => _instance;
+  BinBin._internal();
 
   final List<Consultation> _consultations = [
     // Add some initial consultations
@@ -16,14 +16,12 @@ class ConsultationService {
       dateTime: DateTime.now().add(const Duration(days: 1)),
       durationMinutes: 30,
       location: '315',
-      status: ConsultationStatus.available,
+      status: ConsultationStatus.ACTIVE,
     ),
   ];
 
-  // Updated method to get all consultations
   List<Consultation> getAllConsultations() => List.from(_consultations);
 
-  // Method to get available consultations with filters
   List<Consultation> getAvailableConsultations(
       DateTime startDate,
       DateTime endDate,
@@ -31,7 +29,7 @@ class ConsultationService {
       String? subject,
       ) {
     return _consultations.where((consultation) {
-      if (consultation.status != ConsultationStatus.available) return false;
+      if (consultation.status != ConsultationStatus.ACTIVE) return false;
       if (consultation.dateTime.isBefore(startDate) ||
           consultation.dateTime.isAfter(endDate)) return false;
       if (professorId != null && professorId != 'Сите' &&
@@ -39,7 +37,7 @@ class ConsultationService {
         return false;
       }
       if (subject != null && subject != 'Сите' &&
-          consultation.subject != subject) return false;
+          true) return false;
       return true;
     }).toList();
   }

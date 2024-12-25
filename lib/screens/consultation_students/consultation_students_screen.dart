@@ -1,11 +1,12 @@
 // lib/screens/consultation_students/consultation_students_screen.dart
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 
 import '../../models/consultation.dart';
 import '../../utils/date_formatter.dart';
 
 class ConsultationStudentsScreen extends StatelessWidget {
-  final Consultation consultation;
+  final ConsultationResponse consultation;
 
   const ConsultationStudentsScreen({
     Key? key,
@@ -47,7 +48,7 @@ class ConsultationStudentsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            DateFormatter.formatDateTime(consultation.dateTime),
+            DateFormatter.formatDateTime(consultation.date),
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -56,16 +57,16 @@ class ConsultationStudentsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Просторија: ${consultation.location}',
+            'Просторија: ${consultation.room}',
             style: const TextStyle(
               fontSize: 16,
               color: Colors.black87,
             ),
           ),
-          if (consultation.comment.isNotEmpty) ...[
+          if (consultation.studentInstruction.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              'Коментар: ${consultation.comment}',
+              'Коментар: ${consultation.studentInstruction}',
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.black87,
@@ -78,22 +79,21 @@ class ConsultationStudentsScreen extends StatelessWidget {
   }
 
   Widget _buildStudentsList() {
-    // Here you would get all students for this consultation
-    // For now, we'll show the single booked student
-    if (consultation.studentId == null) {
-      return const Center(
-        child: Text('Нема закажани студенти'),
-      );
-    }
+
+    // if (consultation.studentId == null) {
+    //   return const Center(
+    //     child: Text('Нема закажани студенти'),
+    //   );
+    // }
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildStudentCard(
-          studentName: consultation.studentName ?? 'Непознат студент',
-          subject: consultation.subject ?? 'Непознат предмет',
-          reason: consultation.bookingReason ?? '',
-        ),
+        // _buildStudentCard(
+        //   studentName: consultation.studentName ?? 'Непознат студент',
+        //   subject: consultation.subject ?? 'Непознат предмет',
+        //   reason: consultation.bookingReason ?? '',
+        // ),
       ],
     );
   }

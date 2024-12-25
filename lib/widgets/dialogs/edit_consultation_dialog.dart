@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/request/consultations_form_dto.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
+import 'package:konsultacii/services/manage_consultation_service.dart';
 import '../../models/consultation.dart';
+import '../../services/ConsultationService.dart';
 import '../../utils/date_formatter.dart';
 
 class EditConsultationDialog extends StatefulWidget {
-  final Consultation consultation;
+  final ConsultationResponse consultation;
   final bool isProfessor;
 
   const EditConsultationDialog({
@@ -17,27 +21,36 @@ class EditConsultationDialog extends StatefulWidget {
 }
 
 class _EditConsultationDialogState extends State<EditConsultationDialog> {
+  final ManageConsultationService _manageConsultationService =
+      ManageConsultationService();
+
   late DateTime selectedDate;
-  late TimeOfDay selectedTime;
+  late TimeOfDay selectedTimeFrom;
+  late TimeOfDay selectedTimeTo;
   late TextEditingController locationController;
   late TextEditingController commentController;
   late TextEditingController reasonController;
+  bool? isOnline;
+  late int id;
   String? selectedSubject;
 
   @override
   void initState() {
     super.initState();
-    selectedDate = widget.consultation.dateTime;
-    selectedTime = TimeOfDay.fromDateTime(widget.consultation.dateTime);
-    locationController = TextEditingController(text: widget.consultation.location);
-    commentController = TextEditingController(text: widget.consultation.comment);
-    reasonController = TextEditingController(text: widget.consultation.bookingReason);
-    selectedSubject = widget.consultation.subject;
+    selectedDate = widget.consultation.date;
+    selectedTimeFrom = widget.consultation.startTime;
+    selectedTimeTo = widget.consultation.endTime;
+    locationController = TextEditingController(text: widget.consultation.room);
+    commentController =
+        TextEditingController(text: widget.consultation.studentInstruction);
+    isOnline = widget.consultation.online ?? false;
+    id = widget.consultation.id;
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -46,7 +59,9 @@ class _EditConsultationDialogState extends State<EditConsultationDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.isProfessor ? 'Измени термин' : 'Измени закажана консултација',
+              widget.isProfessor
+                  ? 'Измени термин'
+                  : 'Измени закажана консултација',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -60,13 +75,9 @@ class _EditConsultationDialogState extends State<EditConsultationDialog> {
               _buildLocationField(),
             ],
             const SizedBox(height: 16),
-            if (!widget.isProfessor) ...[
-              _buildSubjectDropdown(),
-              const SizedBox(height: 16),
-              _buildReasonField(),
-            ],
+            _buildStudentInstructionsField(),
             const SizedBox(height: 16),
-            _buildCommentField(),
+            _buildOnlineCheckbox(),
             const SizedBox(height: 24),
             _buildActionButtons(),
           ],
@@ -96,15 +107,43 @@ class _EditConsultationDialogState extends State<EditConsultationDialog> {
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Време'),
-          subtitle: Text(selectedTime.format(context)),
+          title: const Text('Време од'),
+          subtitle: Text(selectedTimeFrom.format(context)),
           onTap: () async {
             final time = await showTimePicker(
               context: context,
-              initialTime: selectedTime,
+              initialTime: selectedTimeFrom,
+              builder: (context, child) {
+                return MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(alwaysUse24HourFormat: true),
+                  child: child!,
+                );
+              },
             );
             if (time != null) {
-              setState(() => selectedTime = time);
+              setState(() => selectedTimeFrom = time);
+            }
+          },
+        ),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Време до'),
+          subtitle: Text(selectedTimeFrom.format(context)),
+          onTap: () async {
+            final time = await showTimePicker(
+              context: context,
+              initialTime: selectedTimeFrom,
+              builder: (context, child) {
+                return MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(alwaysUse24HourFormat: true),
+                  child: child!,
+                );
+              },
+            );
+            if (time != null) {
+              setState(() => selectedTimeTo = time);
             }
           },
         ),
@@ -114,48 +153,47 @@ class _EditConsultationDialogState extends State<EditConsultationDialog> {
 
   Widget _buildLocationField() {
     return TextField(
-      controller: locationController,
-      decoration: InputDecoration(
-        labelText: 'Просторија',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      ),
+        controller: locationController,
+        decoration: InputDecoration(
+          labelText: 'Просторија',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(
+              color: Color(0xFF0099FF),
+              width: 2,
+            ),
+          ),
+        ));
+  }
+
+  Widget _buildOnlineCheckbox() {
+    return Row(
+      children: [
+        const Text(
+          'Онлајн?',
+          style: TextStyle(fontSize: 16),
+        ),
+        Checkbox(
+          value: isOnline,
+          onChanged: (bool? value) {
+            setState(() {
+              isOnline = value ?? false;
+            });
+          },
+          activeColor: const Color(0xFF0099FF), // Match your theme color
+        ),
+      ],
     );
   }
 
-  Widget _buildSubjectDropdown() {
-    final subjects = ['Предмет 1', 'Предмет 2', 'Предмет 3'];
-    return DropdownButtonFormField<String>(
-      value: selectedSubject,
-      decoration: InputDecoration(
-        labelText: 'Предмет',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      items: subjects.map((subject) {
-        return DropdownMenuItem(value: subject, child: Text(subject));
-      }).toList(),
-      onChanged: (value) => setState(() => selectedSubject = value),
-    );
-  }
-
-  Widget _buildReasonField() {
-    return TextField(
-      controller: reasonController,
-      maxLines: 2,
-      decoration: InputDecoration(
-        labelText: 'Причина за консултација',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-
-  // In EditConsultationDialog
-  Widget _buildCommentField() {
+  Widget _buildStudentInstructionsField() {
     return TextField(
       controller: commentController,
       maxLines: 3,
-      enabled: widget.isProfessor, // Only enable for professors
+      enabled: widget.isProfessor,
       decoration: InputDecoration(
-        labelText: 'Коментар',
+        labelText: 'Инструкции за студентите',
         alignLabelWithHint: true,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -185,7 +223,7 @@ class _EditConsultationDialogState extends State<EditConsultationDialog> {
         ),
         const SizedBox(width: 8),
         ElevatedButton(
-          onPressed: _handleSave,
+          onPressed: _handleSubmit,
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0099FF),
             foregroundColor: Colors.white,
@@ -196,26 +234,25 @@ class _EditConsultationDialogState extends State<EditConsultationDialog> {
     );
   }
 
-  void _handleSave() {
-    final DateTime newDateTime = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-      selectedTime.hour,
-      selectedTime.minute,
-    );
+  Future<void> _handleSubmit() async {
+    ConsultationFormDto result = new ConsultationFormDto(
+        date: selectedDate,
+        startTime: selectedTimeFrom,
+        endTime: selectedTimeTo,
+        roomName: locationController.text,
+        studentInstructions: commentController.text,
+        online: isOnline ?? false,);
 
-    Map<String, dynamic> result = {
-      'dateTime': newDateTime,
-      'location': locationController.text,
-      'comment': commentController.text,
-    };
+    try {
+      final updatedConsultation = await _manageConsultationService
+          .editConsultation(id: id, consultationForm: result);
 
-    if (!widget.isProfessor) {
-      result['subject'] = selectedSubject;
-      result['reason'] = reasonController.text;
+      if (mounted) {
+        Navigator.pop(context, updatedConsultation);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
-
-    Navigator.pop(context, result);
   }
 }

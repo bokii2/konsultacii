@@ -1,10 +1,11 @@
 // lib/widgets/dialogs/book_consultation_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import '../../models/consultation.dart';
 import '../../utils/date_formatter.dart';
 
 class BookConsultationDialog extends StatefulWidget {
-  final Consultation consultation;
+  final ConsultationResponse consultation;
 
   const BookConsultationDialog({
     Key? key,
@@ -23,8 +24,8 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
   void initState() {
     super.initState();
     // Initialize with existing values if available
-    selectedSubject = widget.consultation.subject;
-    _reasonController.text = widget.consultation.bookingReason ?? '';
+    // selectedSubject = widget.consultation.subject;
+    _reasonController.text = widget.consultation.studentInstruction ?? '';
   }
 
   @override
@@ -75,7 +76,7 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Професор: ${widget.consultation.professorName}',
+          'Професор: ${widget.consultation.professor}',
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -83,24 +84,24 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Датум: ${DateFormatter.formatDate(widget.consultation.dateTime)}',
+          'Датум: ${DateFormatter.formatDate(widget.consultation.date)}',
           style: const TextStyle(fontSize: 16),
         ),
         Text(
-          'Време: ${DateFormatter.formatTime(widget.consultation.dateTime)}',
+          'Време: ${DateFormatter.formatTime(widget.consultation.date)}',
           style: const TextStyle(fontSize: 16),
         ),
-        if (widget.consultation.location.isNotEmpty) ...[
+        if (widget.consultation.room.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            'Просторија: ${widget.consultation.location}',
+            'Просторија: ${widget.consultation.room}',
             style: const TextStyle(fontSize: 16),
           ),
         ],
-        if (widget.consultation.comment.isNotEmpty) ...[
+        if (widget.consultation.studentInstruction.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            'Коментар: ${widget.consultation.comment}',
+            'Коментар: ${widget.consultation.studentInstruction}',
             style: const TextStyle(fontSize: 16),
           ),
         ],
@@ -203,14 +204,12 @@ class _BookConsultationDialogState extends State<BookConsultationDialog> {
 
   void _handleConfirm(BuildContext context) {
     if (selectedSubject != null && _reasonController.text.isNotEmpty) {
-      // Return the map with booking details
       Map<String, dynamic> result = {
         'subject': selectedSubject,
         'reason': _reasonController.text,
       };
-      Navigator.of(context).pop(result);  // Make sure to return the map
+      Navigator.of(context).pop(result);
     } else {
-      // Show error message if fields are not filled
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Ве молиме пополнете ги сите полиња'),

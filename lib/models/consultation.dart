@@ -1,11 +1,5 @@
 // lib/models/consultation.dart
-enum ConsultationStatus {
-  available,
-  booked,
-  completed,
-  cancelled,
-  professorUnavailable
-}
+import 'package:konsultacii/models/enum/ConsultationStatus.dart';
 
 class Consultation {
   final String id;
@@ -14,14 +8,8 @@ class Consultation {
   DateTime dateTime;
   final int durationMinutes;
   String location;
-  String? studentId;
-  String? studentName;
   ConsultationStatus status;
   String comment;
-  String? subject;
-  String? bookingReason;
-  DateTime? bookedAt;
-  DateTime? lastModified;
 
   Consultation({
     required this.id,
@@ -30,26 +18,18 @@ class Consultation {
     required this.dateTime,
     required this.durationMinutes,
     required this.location,
-    this.studentId,
-    this.studentName,
-    this.status = ConsultationStatus.available,
+    this.status = ConsultationStatus.ACTIVE,
     this.comment = "",
-    this.subject,
-    this.bookingReason,
-    this.bookedAt,
-    this.lastModified,
   });
 
   bool get isEditable {
     if (dateTime.isBefore(DateTime.now())) return false;
-    return status == ConsultationStatus.booked ||
-        status == ConsultationStatus.available;
+    return status == ConsultationStatus.ACTIVE;
   }
 
   bool get isCancellable {
     if (dateTime.isBefore(DateTime.now())) return false;
-    return status == ConsultationStatus.booked ||
-        status == ConsultationStatus.available;
+    return status == ConsultationStatus.ACTIVE;
   }
 
   void book({
@@ -58,30 +38,17 @@ class Consultation {
     required String subject,
     required String reason,
   }) {
-    this.studentId = studentId;
-    this.studentName = studentName;
-    this.subject = subject;
-    this.bookingReason = reason;
-    this.status = ConsultationStatus.booked;
-    this.bookedAt = DateTime.now();
-    this.lastModified = DateTime.now();
+    this.status = ConsultationStatus.ACTIVE;
   }
 
   void cancel() {
-    if (status == ConsultationStatus.booked) {
-      status = ConsultationStatus.available;
-      studentId = null;
-      studentName = null;
-      subject = null;
-      bookingReason = null;
-      bookedAt = null;
-      lastModified = DateTime.now();
+    if (status == ConsultationStatus.ACTIVE) {
+      status = ConsultationStatus.INACTIVE;
     }
   }
 
   void markProfessorUnavailable() {
-    status = ConsultationStatus.professorUnavailable;
-    lastModified = DateTime.now();
+    status = ConsultationStatus.INACTIVE;
   }
 
   void updateDetails({
@@ -98,6 +65,5 @@ class Consultation {
     if (newComment != null) {
       comment = newComment;
     }
-    lastModified = DateTime.now();
   }
 }

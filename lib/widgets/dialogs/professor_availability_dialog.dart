@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 
 import '../../models/consultation.dart';
 import '../../utils/date_formatter.dart';
 
 class ProfessorAvailabilityDialog extends StatelessWidget {
-  final Consultation consultation;
+  final ConsultationResponse consultation;
 
   const ProfessorAvailabilityDialog({
     Key? key,
@@ -37,8 +38,8 @@ class ProfessorAvailabilityDialog extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Дали сте сигурни дека сакате да го означите овој термин како неслободен?\n\n'
-                  'Датум: ${DateFormatter.formatDate(consultation.dateTime)}\n'
-                  'Време: ${DateFormatter.formatTime(consultation.dateTime)}',
+                  'Датум: ${DateFormatter.formatDate(consultation.date)}\n'
+                  'Време: ${DateFormatter.formatTime(consultation.date)}',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 16),
             ),
