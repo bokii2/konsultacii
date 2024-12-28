@@ -1,15 +1,13 @@
 // lib/screens/student/student_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
+import 'package:konsultacii/models/response/professor_response.dart';
 import 'package:konsultacii/services/ConsultationService.dart';
+import 'package:konsultacii/services/professor_service.dart';
+
 import 'package:table_calendar/table_calendar.dart';
-import '../../models/consultation.dart';
-import '../../models/enum/ConsultationStatus.dart';
 import '../../widgets/consultation_card.dart';
-import '../../widgets/dialogs/book_consultation_dialog.dart';
-import '../../services/consultation_service.dart';
-import '../../widgets/dialogs/edit_consultation_dialog.dart';
-import '../../widgets/dialogs/professor_availability_dialog.dart';
+
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({Key? key}) : super(key: key);
 
@@ -19,59 +17,96 @@ class StudentDashboard extends StatefulWidget {
 
 class _StudentDashboardState extends State<StudentDashboard> {
   final ConsultationService _consultationService = ConsultationService();
-  bool _isLoading = false;
-  String? _error;
+  final ProfessorService _professorService = ProfessorService();
   List<ConsultationResponse> consultations = [];
+  List<DateTime> daysWithConsultations = [];
+  bool _isLoadingDayEvents = false;
+  String? _error;
+
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // List<ConsultationResponse> availableConsultations = [];
-  String selectedProfessor = 'Сите';
-  List<String> professors = ['Сите', 'Проф1', 'Проф2', 'Проф3'];
-  // CalendarFormat _calendarFormat = CalendarFormat.week;
-  // DateTime _focusedDay = DateTime.now();
-  // DateTime? _selectedDay;
-  String? selectedSubject;
-  List<String> subjects = ['Предмет 1', 'Предмет 2', 'Предмет 3'];
+  String? selectedProfessor;
+  List<ProfessorResponse> professors = [];
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadConsultations();
+    _loadDaysWithEvents();
+    _loadProfessors();
   }
 
-  Future<void> _loadConsultations() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadEventsForDay(DateTime day) async {
+    if (_isLoadingDayEvents) return;
+
+    setState(() {
+      _isLoadingDayEvents = true;
+    });
+
     try {
-      final response = await _consultationService.getUpcomingConsultations();
+      final events = await _consultationService
+          .getAllConsultationsByDateAndProfessorId(day, selectedProfessor);
       setState(() {
-        consultations = response;
-        _error = null;
+        consultations = events;
       });
     } catch (e) {
-      setState(() => _error = e.toString());
+      print('Error loading events for day: $e');
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoadingDayEvents = false;
+      });
     }
   }
 
+  Future<void> _loadDaysWithEvents() async {
+    try {
+      final response =
+          await _consultationService.getDaysOfUpcomingConsultations();
+      setState(() {
+        daysWithConsultations = response;
+      });
+    } catch (e) {
+      print('Error loading days with events: $e');
+    }
+  }
 
-  List<ConsultationResponse> get filteredConsultations {
-    // return availableConsultations.where((consultation) {
-    //   if (selectedProfessor != 'Сите' &&
-    //       consultation.professorName != selectedProfessor) {
-    //     return false;
-    //   }
-    //   return true;
-    // }).toList();
+  List<int> _getEventsForDay(DateTime day) {
+    if (daysWithConsultations.contains(DateUtils.dateOnly(day))) {
+      return [1];
+    }
     return [];
   }
 
   List<ConsultationResponse> _getConsultationsForDay(DateTime day) {
-    return filteredConsultations.where((consultation) {
+    if (consultations.isEmpty) {
+      return [];
+    }
+    return consultations.where((consultation) {
       return DateUtils.isSameDay(consultation.date, day);
+    }).toList();
+  }
+
+  Future<void> _loadProfessors() async {
+    try {
+      final response = await _professorService.getProfessors();
+      setState(() {
+        professors =
+            response; // Ensure `professors` is a list variable in your state.
+      });
+    } catch (e) {
+      print('Error loading professors: $e');
+    }
+  }
+
+  List<ConsultationResponse> get filteredConsultations {
+    return consultations.where((consultation) {
+      if (selectedProfessor != null &&
+          consultation.professor != selectedProfessor) {
+        return false;
+      }
+      return true;
     }).toList();
   }
 
@@ -159,22 +194,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               items: professors,
               onChanged: (value) {
                 setState(() {
-                  selectedProfessor = value!;
-                  _loadConsultations();
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildFilterDropdown(
-              label: 'Изберете предмет',
-              value: selectedSubject,
-              items: subjects,
-              onChanged: (value) {
-                setState(() {
-                  selectedSubject = value;
-                  _loadConsultations();
+                  selectedProfessor = value;
                 });
               },
             ),
@@ -187,7 +207,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Widget _buildFilterDropdown({
     required String label,
     required String? value,
-    required List<String> items,
+    required List<ProfessorResponse> items,
     required ValueChanged<String?> onChanged,
   }) {
     return Column(
@@ -214,16 +234,27 @@ class _StudentDashboardState extends State<StudentDashboard> {
               icon: const Icon(Icons.keyboard_arrow_down),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               borderRadius: BorderRadius.circular(12),
-              items: items.map((item) => DropdownMenuItem(
-                value: item,
-                child: Text(
-                  item,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
+              items: [
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text(
+                    "Сите професори",
+                    style: TextStyle(fontSize: 16, color: Colors.black87),
                   ),
                 ),
-              )).toList(),
+                ...items.map((item) {
+                  return DropdownMenuItem<String>(
+                    value: item.username,
+                    child: Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
               onChanged: onChanged,
             ),
           ),
@@ -237,9 +268,27 @@ class _StudentDashboardState extends State<StudentDashboard> {
       children: [
         _buildCalendar(),
         const Divider(height: 1),
-        Expanded(
-          child: _buildConsultationsForSelectedDay(),
-        ),
+        if (_selectedDay != null) ...[
+          const SizedBox(height: 20),
+          _isLoadingDayEvents
+              ? const Expanded(
+            child: Center(
+              child: SizedBox(
+                width: 50,
+                height: 50,
+                child: CircularProgressIndicator(
+                  strokeWidth:
+                  4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(
+                      0xFF0099FF)), // Optional: match your theme color
+                ),
+              ),
+            ),
+          )
+              : Expanded(
+            child: _buildConsultationsForSelectedDay(),
+          ),
+        ],
       ],
     );
   }
@@ -261,34 +310,22 @@ class _StudentDashboardState extends State<StudentDashboard> {
         lastDay: DateTime.now().add(const Duration(days: 365)),
         focusedDay: _focusedDay,
         calendarFormat: _calendarFormat,
-        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        selectedDayPredicate: (day) =>
+        _selectedDay != null && isSameDay(_selectedDay!, day),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
             _selectedDay = selectedDay;
             _focusedDay = focusedDay;
           });
+
+          _loadEventsForDay(selectedDay);
         },
         onFormatChanged: (format) {
           setState(() {
             _calendarFormat = format;
           });
         },
-        eventLoader: (day) => _getConsultationsForDay(day),
-        locale: 'mk_MK',
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: true,
-          titleCentered: true,
-          formatButtonShowsNext: false,
-          titleTextStyle: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-          formatButtonTextStyle: TextStyle(fontSize: 14),
-          formatButtonDecoration: BoxDecoration(
-            color: Color(0xFF0099FF),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
-        ),
+        eventLoader: (day) => _getEventsForDay(day),
         calendarStyle: CalendarStyle(
           markersMaxCount: 3,
           markerSize: 8,
@@ -304,21 +341,34 @@ class _StudentDashboardState extends State<StudentDashboard> {
             color: const Color(0xFF0099FF).withOpacity(0.3),
             shape: BoxShape.circle,
           ),
-          weekendTextStyle: const TextStyle(color: Color(0xFF000066)),
-          outsideTextStyle: TextStyle(color: Colors.grey[400]),
         ),
-        availableCalendarFormats: const {
-          CalendarFormat.month: 'Месец',
-          CalendarFormat.twoWeeks: '2 Недели',
-          CalendarFormat.week: 'Недела',
-        },
+        locale: 'mk_MK',
+        headerStyle: const HeaderStyle(
+          formatButtonVisible: false,
+          titleCentered: true,
+          titleTextStyle: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildConsultationsForSelectedDay() {
-    // final consultationsForDay = _getConsultationsForDay(_selectedDay!);
-    final List<ConsultationResponse> consultationsForDay = [];
+    if (_selectedDay == null) {
+      return const Center(
+        child: Text(
+          'Изберете ден за да ги видите консултациите',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    final consultationsForDay = _getConsultationsForDay(_selectedDay!);
 
     if (consultationsForDay.isEmpty) {
       return Center(
@@ -332,110 +382,154 @@ class _StudentDashboardState extends State<StudentDashboard> {
       );
     }
 
-    return _buildConsultationsList(consultationsForDay);
-  }
-
-  Widget _buildListView() {
-    return _buildConsultationsList(filteredConsultations);
-  }
-
-  Widget _buildConsultationsList(List<ConsultationResponse> consultations) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: consultations.length,
+      itemCount: consultationsForDay.length,
       itemBuilder: (context, index) {
-        final consultation = consultations[index];
+        if (index >= consultationsForDay.length) {
+          return const SizedBox.shrink();
+        }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: ConsultationCard(
-            consultation: consultation,
+            consultation: consultationsForDay[index],
             isProfessor: false,
-            onBook: consultation.status == ConsultationStatus.ACTIVE
-                ? () => _handleBookConsultation(consultation)
-                : null,
-            onCancel: consultation.status == ConsultationStatus.ACTIVE && true
-                // consultation.studentId == 'student1' // Replace with actual student ID
-                ? () => _handleCancelConsultation(consultation)
-                : null,
-            onEdit: consultation.status == ConsultationStatus.ACTIVE && true
-                // consultation.studentId == 'student1' // Replace with actual student ID
-                ? (updates) => _handleEditConsultation(consultation, updates)
-                : null,
           ),
         );
       },
     );
   }
-  void _handleBookConsultation(ConsultationResponse consultation) async {
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => BookConsultationDialog(
-        consultation: consultation,
-      ),
-    );
 
-    if (result != null) {
-      final bookingDetails = {
-        'studentId': 'student1',
-        'studentName': 'Студент 1',
-        'subject': result['subject'],
-        'reason': result['reason'],
-        'status': ConsultationStatus.ACTIVE,
-      };
-
-      setState(() {
-        // _consultationService.updateConsultation(consultation.id, bookingDetails);
-        // consultation.status = ConsultationStatus.ACTIVE;
-        // Refresh the list
-        _loadConsultations();
-      });
-
-      // Show success message
-      _showBookingConfirmation();
-    }
-  }
-
-  void _handleCancelConsultation(ConsultationResponse consultation) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Откажи консултација'),
-        content: const Text('Дали сте сигурни дека сакате да ја откажете консултацијата?'),
-        actions: [
-          TextButton(
-            child: const Text('Не'),
-            onPressed: () => Navigator.pop(context, false),
+  Widget _buildListView() {
+    if (consultations.isEmpty) {
+    // if (filteredConsultations.isEmpty) {
+      return const Center(
+        child: Text(
+          'Нема закажани консултации',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Да'),
-            onPressed: () => Navigator.pop(context, true),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      setState(() {
-        // _consultationService.updateConsultation(
-        //   consultation.id,
-        //   {'status': ConsultationStatus.available},
-        // );
-        _loadConsultations();
-      });
-      _showCancelConfirmation();
+        ),
+      );
     }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: consultations.length,
+      itemBuilder: (context, index) {
+        if (index >= consultations.length) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ConsultationCard(
+            consultation: consultations[index],
+            isProfessor: false,
+          ),
+        );
+      },
+    );
   }
 
-  void _handleEditConsultation(ConsultationResponse consultation, ConsultationResponse updatedConsultation) {
-    setState(() {
-      // _consultationService.updateConsultation(consultation.id, updates);
-      _loadConsultations();
-    });
-  }
+  // Widget _buildConsultationsList(List<ConsultationResponse> consultations) {
+  //   return ListView.builder(
+  //     padding: const EdgeInsets.all(16),
+  //     itemCount: consultations.length,
+  //     itemBuilder: (context, index) {
+  //       final consultation = consultations[index];
+  //       return Padding(
+  //         padding: const EdgeInsets.only(bottom: 12),
+  //         child: ConsultationCard(
+  //           consultation: consultation,
+  //           isProfessor: false,
+  //           onBook: consultation.status == ConsultationStatus.ACTIVE
+  //               ? () => _handleBookConsultation(consultation)
+  //               : null,
+  //           onCancel: consultation.status == ConsultationStatus.ACTIVE && true
+  //               // consultation.studentId == 'student1' // Replace with actual student ID
+  //               ? () => _handleCancelConsultation(consultation)
+  //               : null,
+  //           onEdit: consultation.status == ConsultationStatus.ACTIVE && true
+  //               // consultation.studentId == 'student1' // Replace with actual student ID
+  //               ? (updates) => _handleEditConsultation(consultation, updates)
+  //               : null,
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+
+  // void _handleBookConsultation(ConsultationResponse consultation) async {
+  //   final result = await showDialog<Map<String, dynamic>>(
+  //     context: context,
+  //     builder: (context) => BookConsultationDialog(
+  //       consultation: consultation,
+  //     ),
+  //   );
+  //
+  //   if (result != null) {
+  //     final bookingDetails = {
+  //       'studentId': 'student1',
+  //       'studentName': 'Студент 1',
+  //       'subject': result['subject'],
+  //       'reason': result['reason'],
+  //       'status': ConsultationStatus.ACTIVE,
+  //     };
+  //
+  //     setState(() {
+  //       // _consultationService.updateConsultation(consultation.id, bookingDetails);
+  //       // consultation.status = ConsultationStatus.ACTIVE;
+  //       // Refresh the list
+  //       _loadConsultations();
+  //     });
+  //
+  //     // Show success message
+  //     _showBookingConfirmation();
+  //   }
+  // }
+
+  // void _handleCancelConsultation(ConsultationResponse consultation) async {
+  //   final confirmed = await showDialog<bool>(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text('Откажи консултација'),
+  //       content: const Text('Дали сте сигурни дека сакате да ја откажете консултацијата?'),
+  //       actions: [
+  //         TextButton(
+  //           child: const Text('Не'),
+  //           onPressed: () => Navigator.pop(context, false),
+  //         ),
+  //         ElevatedButton(
+  //           style: ElevatedButton.styleFrom(
+  //             backgroundColor: Colors.red,
+  //             foregroundColor: Colors.white,
+  //           ),
+  //           child: const Text('Да'),
+  //           onPressed: () => Navigator.pop(context, true),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  //
+  //   if (confirmed == true) {
+  //     setState(() {
+  //       // _consultationService.updateConsultation(
+  //       //   consultation.id,
+  //       //   {'status': ConsultationStatus.available},
+  //       // );
+  //       _loadConsultations();
+  //     });
+  //     _showCancelConfirmation();
+  //   }
+  // }
+
+  // void _handleEditConsultation(ConsultationResponse consultation, ConsultationResponse updatedConsultation) {
+  //   setState(() {
+  //     // _consultationService.updateConsultation(consultation.id, updates);
+  //     _loadConsultations();
+  //   });
+  // }
 
   void _showCancelConfirmation() {
     ScaffoldMessenger.of(context).showSnackBar(

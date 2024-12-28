@@ -74,14 +74,14 @@ class ConsultationCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.person, size: 16, color: Color(0xFF0099FF)),
-              const SizedBox(width: 8),
+              Icon(Icons.person, size: 16, color: Color(0xFF0099FF)),
+              SizedBox(width: 8),
               Text(
                 '',
                 // consultation.studentName ?? 'Непознат студент',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
