@@ -58,4 +58,30 @@ class ConsultationResponse {
     'studentInstruction': studentInstruction,
     'isCancelled': isCancelled,
   };
+
+  ConsultationResponse copyWith({
+    int? id,
+    String? professor,
+    String? room,
+    DateTime? date,
+    TimeOfDay? startTime,
+    TimeOfDay? endTime,
+    ConsultationStatus? status,
+    bool? online,
+    String? studentInstruction,
+    bool? isCancelled,
+  }) {
+    return ConsultationResponse(
+      id: id ?? this.id,
+      professor: professor ?? this.professor,
+      room: room ?? this.room,
+      date: date ?? this.date,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      status: status ?? this.status,
+      online: online ?? this.online,
+      studentInstruction: studentInstruction ?? this.studentInstruction,
+      isCancelled: isCancelled ?? this.isCancelled,
+    );
+  }
 }

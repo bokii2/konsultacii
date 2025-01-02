@@ -7,6 +7,28 @@ void main() {
   runApp(const ConsultationApp());
 }
 
+class SnackBarService {
+  static final GlobalKey<ScaffoldMessengerState> messengerKey =
+  GlobalKey<ScaffoldMessengerState>();
+
+  static void showSnackBar(String message, {bool isError = false}) {
+    if (messengerKey.currentState != null) {
+      messengerKey.currentState!.clearSnackBars();
+      messengerKey.currentState!.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          behavior: SnackBarBehavior.fixed,
+          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+}
+
 class ConsultationApp extends StatelessWidget {
   const ConsultationApp({Key? key}) : super(key: key);
 
@@ -53,6 +75,7 @@ class ConsultationApp extends StatelessWidget {
         Locale('mk', 'MK'),
         Locale('en', 'US'),
       ],
+      scaffoldMessengerKey: SnackBarService.messengerKey,
     );
   }
 }

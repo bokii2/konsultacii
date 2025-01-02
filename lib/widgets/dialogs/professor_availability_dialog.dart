@@ -4,10 +4,10 @@ import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import '../../models/consultation.dart';
 import '../../utils/date_formatter.dart';
 
-class ProfessorAvailabilityDialog extends StatelessWidget {
+class ProfessorCancelConsultationDialog extends StatelessWidget {
   final ConsultationResponse consultation;
 
-  const ProfessorAvailabilityDialog({
+  const ProfessorCancelConsultationDialog({
     Key? key,
     required this.consultation,
   }) : super(key: key);
@@ -28,7 +28,7 @@ class ProfessorAvailabilityDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Означи како неслободен',
+              'Откажи термин',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -37,7 +37,7 @@ class ProfessorAvailabilityDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Дали сте сигурни дека сакате да го означите овој термин како неслободен?\n\n'
+              'Дали сте сигурни дека сакате да го откажете овој термин?\n\n'
                   'Датум: ${DateFormatter.formatDate(consultation.date)}\n'
                   'Време: ${DateFormatter.formatTime(consultation.date)}',
               textAlign: TextAlign.center,
@@ -48,12 +48,12 @@ class ProfessorAvailabilityDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Откажи'),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
+                  onPressed: () => Navigator.of(context).pop(true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     foregroundColor: Colors.white,

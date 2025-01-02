@@ -1,12 +1,17 @@
 // lib/screens/professor/professor_dashboard.dart
+import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:konsultacii/models/enum/ConsultationStatus.dart';
+import 'package:konsultacii/models/request/irregular_consultations_request.dart';
 import 'package:konsultacii/services/ConsultationService.dart';
+import 'package:konsultacii/services/manage_consultation_service.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../../main.dart';
 import '../../models/consultation.dart';
 import '../../models/response/ConsultationsResponse.dart';
 import '../../widgets/consultation_card.dart';
 import '../../utils/date_formatter.dart';
+import '../../widgets/dialogs/add_single_consultation_slot.dart';
 import '../../widgets/dialogs/professor_availability_dialog.dart';
 
 class ProfessorDashboard extends StatefulWidget {
@@ -18,6 +23,7 @@ class ProfessorDashboard extends StatefulWidget {
 
 class _ProfessorDashboardState extends State<ProfessorDashboard> {
   final ConsultationService _consultationService = ConsultationService();
+  final ManageConsultationService _manageConsultationService = ManageConsultationService();
   List<ConsultationResponse> consultations = [];
   List<DateTime> daysWithConsultations = [];
   bool _isLoading = false;
@@ -34,6 +40,29 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
     super.initState();
     _selectedDay = _focusedDay;
     _loadDaysWithEvents();
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.clearSnackBars();
+
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 100,
+          left: 16,
+          right: 16,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadEventsForDay(DateTime day) async {
@@ -86,8 +115,8 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
     }).toList();
   }
 
-  void _handleEditConsultation(
-      ConsultationResponse consultation, ConsultationResponse updatedConsultation) {
+  void _handleEditConsultation(ConsultationResponse consultation,
+      ConsultationResponse updatedConsultation) {
     setState(() {
       // _consultationService.updateConsultation(consultation.id, updates);
 
@@ -117,20 +146,23 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: _buildAppBar(context),
-        body: TabBarView(
-          children: [
-            _buildCalendarView(),
-            _buildListView(),
-          ],
+    return Builder(
+      builder: (context) => DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: _buildAppBar(context),
+          body: TabBarView(
+            children: [
+              _buildCalendarView(),
+              _buildListView(),
+            ],
+          ),
+          floatingActionButton: _buildFloatingActionButton(),
         ),
-        floatingActionButton: _buildFloatingActionButton(),
       ),
     );
   }
+
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
@@ -185,8 +217,7 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
                       width: 50,
                       height: 50,
                       child: CircularProgressIndicator(
-                        strokeWidth:
-                            4,
+                        strokeWidth: 4,
                         valueColor: AlwaysStoppedAnimation<Color>(Color(
                             0xFF0099FF)), // Optional: match your theme color
                       ),
@@ -353,35 +384,20 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
       ConsultationResponse consultation) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => ProfessorAvailabilityDialog(
+      builder: (context) => ProfessorCancelConsultationDialog(
         consultation: consultation,
       ),
     );
 
     if (result == true) {
+      await _manageConsultationService.deleteConsultation(id: consultation.id);
+
       setState(() {
-        // consultation.status = ConsultationStatus.professorUnavailable;
-        // _consultationService.updateConsultation(
-        //   consultation.id,
-        //   {'status': ConsultationStatus.professorUnavailable},
-        // );
-        final index = consultations.indexWhere((c) => c.id == consultation.id);
-        if (index != -1) {
-          consultations[index] = consultation;
-        }
+        consultations.removeWhere((c) => c.id == consultation.id);
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Терминот е означен како неслободен'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      SnackBarService.showSnackBar('Консултациите се успешно откажани');
+
     }
   }
 
@@ -427,217 +443,57 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
     if (confirmed == true) {
       setState(() {
-        // _consultationService.deleteConsultation(consultation.id);
+        // _consultationService.deleteConsultation(consultatconst ion.id);
         consultations.remove(consultation);
       });
     }
   }
 
   Widget _buildFloatingActionButton() {
-    return FloatingActionButton(
-      backgroundColor: const Color(0xFF0099FF),
-      elevation: 4,
-      onPressed: () => _showAddConsultationDialog(context),
-      child: const Icon(Icons.add, color: Colors.white),
+    return CircularMenu(
+      alignment: Alignment.bottomRight,
+      toggleButtonColor: const Color(0xFF0099FF),
+      toggleButtonIconColor: Colors.white,
+      toggleButtonSize: 36.0,
+      toggleButtonAnimatedIconData: AnimatedIcons.menu_close,
+      toggleButtonBoxShadow: const [],
+      items: [
+        CircularMenuItem(
+          icon: Icons.add,
+          color: const Color(0xFF0099FF),
+          iconColor: Colors.white,
+          boxShadow: const [],
+          onTap: () {
+            _showAddConsultationDialog(context);
+          },
+        ),
+        CircularMenuItem(
+          icon: Icons.playlist_add,
+          color: const Color(0xFF0099FF),
+          iconColor: Colors.white,
+          boxShadow: [],
+          onTap: () {
+            _showAddConsultationDialog(context);
+          },
+        ),
+      ],
     );
   }
 
-  void _showAddConsultationDialog(BuildContext context) {
-    late DateTime selectedDate;
-    late TimeOfDay selectedTime;
-    late String location;
-    late String comment;
-
-    selectedDate = DateTime.now();
-    selectedTime = TimeOfDay.now();
-    location = '';
-    comment = '';
-
-    showDialog(
+  Future<void> _showAddConsultationDialog(BuildContext context) async {
+    final IrregularConsultationsRequest? result = await showDialog<IrregularConsultationsRequest>(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text(
-                'Додади термин',
-                style: TextStyle(
-                  color: Color(0xFF000066),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Датум'),
-                      subtitle: Text(DateFormatter.formatDate(selectedDate)),
-                      onTap: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime.now(),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 90)),
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.light(
-                                  primary: Color(0xFF0099FF),
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (date != null) {
-                          setState(() {
-                            selectedDate = date;
-                          });
-                        }
-                      },
-                    ),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Час'),
-                      subtitle: Text(selectedTime.format(context)),
-                      onTap: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: selectedTime,
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.light(
-                                  primary: Color(0xFF0099FF),
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (time != null) {
-                          setState(() {
-                            selectedTime = time;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Просторија',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0099FF),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) => location = value,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Дополнителен коментар',
-                        alignLabelWithHint: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF0099FF),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) => comment = value,
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  child: Text(
-                    'Откажи',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0099FF),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Додади'),
-                  onPressed: () {
-                    if (location.isNotEmpty) {
-                      final newConsultation = Consultation(
-                        id: DateTime.now().toString(),
-                        professorId: 'prof1',
-                        professorName: 'Проф1',
-                        dateTime: DateTime(
-                          selectedDate.year,
-                          selectedDate.month,
-                          selectedDate.day,
-                          selectedTime.hour,
-                          selectedTime.minute,
-                        ),
-                        durationMinutes: 30,
-                        location: location,
-                        comment: comment,
-                        status: ConsultationStatus.ACTIVE,
-                      );
+      builder: (BuildContext context) => const AddConsultationDialog(),
+    );
 
-                      // _consultationService.addConsultation(newConsultation);
+    if (result != null) {
+      await _manageConsultationService.createIrregularConsultations(professorId: 'riste.stojanov', request: result);
 
-                      setState(() {
-                        // consultations.add(newConsultation);
-                        _selectedDay = newConsultation.dateTime;
-                        _focusedDay = newConsultation.dateTime;
-                      });
+      _loadDaysWithEvents();
+      _loadEventsForDay(_focusedDay);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              const Text('Консултацијата е успешно додадена'),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          margin: const EdgeInsets.all(16),
-                        ),
-                      );
 
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) {
-      setState(() {
-        consultations = List.from(consultations);
-      });
-    });
+      SnackBarService.showSnackBar('Консултациите се успшено додадени');
+    }
   }
 }

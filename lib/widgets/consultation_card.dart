@@ -134,14 +134,14 @@ class ConsultationCard extends StatelessWidget {
     Color statusColor;
     String statusText;
 
-    switch (consultation.status) {
-      case ConsultationStatus.ACTIVE:
+    switch (consultation.isCancelled) {
+      case false:
         statusColor = const Color(0xFF4CAF50);
         statusText = 'Активен';
         break;
-      case ConsultationStatus.INACTIVE:
-        statusColor = const Color(0xFF9E9E9E);
-        statusText = 'Неактивен';
+      case true:
+        statusColor = Colors.red;
+        statusText = 'Откажан';
         break;
       default:
         statusColor = Colors.grey;
@@ -312,12 +312,11 @@ class ConsultationCard extends StatelessWidget {
           spacing: 8.0, // Horizontal spacing between widgets
           runSpacing: 4.0, // Vertical spacing between rows if wrapped
           children: [
-            // _buildMessageButton(context),
             if (isProfessor) ...[
               if (consultation.status == ConsultationStatus.ACTIVE)
                 ElevatedButton.icon(
                   icon: const Icon(Icons.people),
-                  label: const Text('Закажани студенти'),
+                  label: const Text('Студенти'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0099FF),
                     foregroundColor: Colors.white,
@@ -338,6 +337,9 @@ class ConsultationCard extends StatelessWidget {
                 onPressed:
                     onEdit != null ? () => _showEditDialog(context) : null,
               ),
+              IconButton(
+                  icon: const Icon(Icons.cancel, color: Color(0xFF0099FF)),
+                  onPressed: () => onMarkUnavailable!()),
             ] else ...[
               if (consultation.status == ConsultationStatus.ACTIVE)
                 ElevatedButton(
@@ -389,7 +391,7 @@ class ConsultationCard extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.event_busy, color: Colors.orange),
-            onPressed: () => _showMarkUnavailableDialog(context),
+            onPressed: () => onMarkUnavailable!(),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -505,19 +507,6 @@ class ConsultationCard extends StatelessWidget {
 
     if (result != null && onEdit != null) {
       onEdit!(result);
-    }
-  }
-
-  Future<void> _showMarkUnavailableDialog(BuildContext context) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => ProfessorAvailabilityDialog(
-        consultation: consultation,
-      ),
-    );
-
-    if (result == true && onMarkUnavailable != null) {
-      onMarkUnavailable!();
     }
   }
 }
