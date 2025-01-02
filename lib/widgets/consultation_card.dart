@@ -247,63 +247,6 @@ class ConsultationCard extends StatelessWidget {
     );
   }
 
-  // In ConsultationCard, update the _buildActions method
-  // Widget _buildActions(BuildContext context) {
-  //   return Column(
-  //     children: [
-  //       Row(
-  //         mainAxisAlignment: MainAxisAlignment.end,
-  //         children: [
-  //           _buildMessageButton(context),
-  //           const SizedBox(width: 8),
-  //           if (isProfessor) ...[
-  //             if (consultation.status == ConsultationStatus.ACTIVE)
-  //               ElevatedButton.icon(
-  //                 icon: const Icon(Icons.people),
-  //                 label: const Text('Закажани студенти'),
-  //                 style: ElevatedButton.styleFrom(
-  //                   backgroundColor: const Color(0xFF0099FF),
-  //                   foregroundColor: Colors.white,
-  //                 ),
-  //                 onPressed: () {
-  //                   Navigator.push(
-  //                     context,
-  //                     MaterialPageRoute(
-  //                       builder: (context) => ConsultationStudentsScreen(
-  //                         consultation: consultation,
-  //                       ),
-  //                     ),
-  //                   );
-  //                 },
-  //               ),
-  //             IconButton(
-  //               icon: const Icon(Icons.edit, color: Color(0xFF0099FF)),
-  //               onPressed:
-  //                   onEdit != null ? () => _showEditDialog(context) : null,
-  //             ),
-  //           ] else ...[
-  //             if (consultation.status == ConsultationStatus.ACTIVE)
-  //               ElevatedButton(
-  //                 style: ElevatedButton.styleFrom(
-  //                   backgroundColor: const Color(0xFF0099FF),
-  //                   foregroundColor: Colors.white,
-  //                 ),
-  //                 child: const Text('Закажи'),
-  //                 onPressed: onBook,
-  //               ),
-  //             if (consultation.status == ConsultationStatus.ACTIVE &&
-  //                 true) // Replace with actual student ID
-  //               IconButton(
-  //                 icon: const Icon(Icons.cancel, color: Colors.red),
-  //                 onPressed: onCancel,
-  //               ),
-  //           ],
-  //         ],
-  //       ),
-  //     ],
-  //   );
-  // }
-
   Widget _buildActions(BuildContext context) {
     return Column(
       children: [
@@ -345,8 +288,8 @@ class ConsultationCard extends StatelessWidget {
                     backgroundColor: const Color(0xFF0099FF),
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Закажи'),
                   onPressed: onBook,
+                  child: const Text('Закажи'),
                 ),
               if (consultation.status == ConsultationStatus.ACTIVE &&
                   true) // Replace with actual student ID

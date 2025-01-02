@@ -77,4 +77,32 @@ class ConsultationService {
       throw Exception('Network error: $e');
     }
   }
+
+  Future<ConsultationResponse> updateConsultation(
+      int consultationId,
+      Map<String, dynamic> updateData,
+      ) async {
+    try {
+      final response = await client.patch(
+        Uri.parse('${ApiConfig.baseUrl}/consultations/$consultationId'),
+        headers: {
+          'Content-Type': 'application/json',
+          // Add any authorization headers if needed
+          // 'Authorization': 'Bearer $token',
+        },
+        body: json.encode(updateData),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return ConsultationResponse.fromJson(jsonData);
+      } else {
+        throw HttpException(
+          'Failed to update consultation. Status: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error updating consultation: ${e.toString()}');
+    }
+  }
 }

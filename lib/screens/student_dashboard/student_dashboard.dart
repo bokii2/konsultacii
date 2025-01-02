@@ -7,9 +7,11 @@ import 'package:konsultacii/services/professor_service.dart';
 
 import 'package:table_calendar/table_calendar.dart';
 import '../../widgets/consultation_card.dart';
+import '../../widgets/dialogs/book_consultation_confirm_dialog.dart';
+import '../../widgets/dialogs/cancel_consultation_confrim_dialog.dart';
 
 class StudentDashboard extends StatefulWidget {
-  const StudentDashboard({Key? key}) : super(key: key);
+  const StudentDashboard({super.key});
 
   @override
   _StudentDashboardState createState() => _StudentDashboardState();
@@ -145,6 +147,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         ),
       ),
       bottom: TabBar(
+        // isScrollable: true, // Makes the TabBar scrollable
         indicatorColor: Theme.of(context).colorScheme.inversePrimary,
         labelColor: Theme.of(context).colorScheme.onPrimary,
         unselectedLabelColor: Colors.white70,
@@ -196,6 +199,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 setState(() {
                   selectedProfessor = value;
                 });
+                if (_selectedDay != null) {
+                  _loadEventsForDay(_selectedDay!);
+                }
               },
             ),
           ),
@@ -272,22 +278,21 @@ class _StudentDashboardState extends State<StudentDashboard> {
           const SizedBox(height: 20),
           _isLoadingDayEvents
               ? const Expanded(
-            child: Center(
-              child: SizedBox(
-                width: 50,
-                height: 50,
-                child: CircularProgressIndicator(
-                  strokeWidth:
-                  4,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(
-                      0xFF0099FF)), // Optional: match your theme color
-                ),
-              ),
-            ),
-          )
+                  child: Center(
+                    child: SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 4,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(
+                            0xFF0099FF)), // Optional: match your theme color
+                      ),
+                    ),
+                  ),
+                )
               : Expanded(
-            child: _buildConsultationsForSelectedDay(),
-          ),
+                  child: _buildConsultationsForSelectedDay(),
+                ),
         ],
       ],
     );
@@ -311,7 +316,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         focusedDay: _focusedDay,
         calendarFormat: _calendarFormat,
         selectedDayPredicate: (day) =>
-        _selectedDay != null && isSameDay(_selectedDay!, day),
+            _selectedDay != null && isSameDay(_selectedDay!, day),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
             _selectedDay = selectedDay;
@@ -373,7 +378,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     if (consultationsForDay.isEmpty) {
       return Center(
         child: Text(
-          'Нема закажани консултации за избраниот ден',
+          'Нема закажани консултации',
           style: TextStyle(
             color: Colors.grey[600],
             fontSize: 16,
@@ -394,6 +399,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
           child: ConsultationCard(
             consultation: consultationsForDay[index],
             isProfessor: false,
+            onBook: () => _handleBookConsultation(consultationsForDay[index]),
+            onCancel: () =>
+                _handleCancelConsultation(consultationsForDay[index]),
           ),
         );
       },
@@ -401,8 +409,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Widget _buildListView() {
-    if (consultations.isEmpty) {
-    // if (filteredConsultations.isEmpty) {
+    // if (consultations.isEmpty) {
+    if (filteredConsultations.isEmpty) {
       return const Center(
         child: Text(
           'Нема закажани консултации',
@@ -416,146 +424,122 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: consultations.length,
+      itemCount: filteredConsultations.length,
       itemBuilder: (context, index) {
-        if (index >= consultations.length) {
+        if (index >= filteredConsultations.length) {
           return const SizedBox.shrink();
         }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: ConsultationCard(
-            consultation: consultations[index],
+            consultation: filteredConsultations[index],
             isProfessor: false,
+            onBook: () => _handleBookConsultation(filteredConsultations[index]),
+            onCancel: () =>
+                _handleCancelConsultation(filteredConsultations[index]),
           ),
         );
       },
     );
   }
 
-  // Widget _buildConsultationsList(List<ConsultationResponse> consultations) {
-  //   return ListView.builder(
-  //     padding: const EdgeInsets.all(16),
-  //     itemCount: consultations.length,
-  //     itemBuilder: (context, index) {
-  //       final consultation = consultations[index];
-  //       return Padding(
-  //         padding: const EdgeInsets.only(bottom: 12),
-  //         child: ConsultationCard(
-  //           consultation: consultation,
-  //           isProfessor: false,
-  //           onBook: consultation.status == ConsultationStatus.ACTIVE
-  //               ? () => _handleBookConsultation(consultation)
-  //               : null,
-  //           onCancel: consultation.status == ConsultationStatus.ACTIVE && true
-  //               // consultation.studentId == 'student1' // Replace with actual student ID
-  //               ? () => _handleCancelConsultation(consultation)
-  //               : null,
-  //           onEdit: consultation.status == ConsultationStatus.ACTIVE && true
-  //               // consultation.studentId == 'student1' // Replace with actual student ID
-  //               ? (updates) => _handleEditConsultation(consultation, updates)
-  //               : null,
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
-  // void _handleBookConsultation(ConsultationResponse consultation) async {
-  //   final result = await showDialog<Map<String, dynamic>>(
-  //     context: context,
-  //     builder: (context) => BookConsultationDialog(
-  //       consultation: consultation,
-  //     ),
-  //   );
-  //
-  //   if (result != null) {
-  //     final bookingDetails = {
-  //       'studentId': 'student1',
-  //       'studentName': 'Студент 1',
-  //       'subject': result['subject'],
-  //       'reason': result['reason'],
-  //       'status': ConsultationStatus.ACTIVE,
-  //     };
-  //
-  //     setState(() {
-  //       // _consultationService.updateConsultation(consultation.id, bookingDetails);
-  //       // consultation.status = ConsultationStatus.ACTIVE;
-  //       // Refresh the list
-  //       _loadConsultations();
-  //     });
-  //
-  //     // Show success message
-  //     _showBookingConfirmation();
-  //   }
-  // }
-
-  // void _handleCancelConsultation(ConsultationResponse consultation) async {
-  //   final confirmed = await showDialog<bool>(
-  //     context: context,
-  //     builder: (context) => AlertDialog(
-  //       title: const Text('Откажи консултација'),
-  //       content: const Text('Дали сте сигурни дека сакате да ја откажете консултацијата?'),
-  //       actions: [
-  //         TextButton(
-  //           child: const Text('Не'),
-  //           onPressed: () => Navigator.pop(context, false),
-  //         ),
-  //         ElevatedButton(
-  //           style: ElevatedButton.styleFrom(
-  //             backgroundColor: Colors.red,
-  //             foregroundColor: Colors.white,
-  //           ),
-  //           child: const Text('Да'),
-  //           onPressed: () => Navigator.pop(context, true),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  //
-  //   if (confirmed == true) {
-  //     setState(() {
-  //       // _consultationService.updateConsultation(
-  //       //   consultation.id,
-  //       //   {'status': ConsultationStatus.available},
-  //       // );
-  //       _loadConsultations();
-  //     });
-  //     _showCancelConfirmation();
-  //   }
-  // }
-
-  // void _handleEditConsultation(ConsultationResponse consultation, ConsultationResponse updatedConsultation) {
-  //   setState(() {
-  //     // _consultationService.updateConsultation(consultation.id, updates);
-  //     _loadConsultations();
-  //   });
-  // }
-
-  void _showCancelConfirmation() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Консултацијата е успешно откажана'),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        margin: const EdgeInsets.all(16),
+  Future<void> _handleBookConsultation(
+      ConsultationResponse consultation) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => BookConsultationConfirmDialog(
+        consultation: consultation,
       ),
     );
+
+    if (confirmed == true) {
+      try {
+        setState(() {
+          _isLoadingDayEvents = true;
+        });
+
+        await _loadDaysWithEvents();
+        if (_selectedDay != null) {
+          await _loadEventsForDay(_selectedDay!);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Консултацијата е успешно закажана'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Грешка при закажување на консултацијата: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoadingDayEvents = false;
+          });
+        }
+      }
+    }
   }
 
-  void _showBookingConfirmation() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Консултациите се успешно закажани!'),
-        backgroundColor: const Color(0xFF0099FF),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        margin: const EdgeInsets.all(16),
-      ),
+  Future<void> _handleCancelConsultation(
+      ConsultationResponse consultation) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) =>
+          CancelConsultationDialog(consultation: consultation),
     );
+
+    if (confirmed == true) {
+      try {
+        setState(() {
+          _isLoadingDayEvents = true;
+        });
+
+        // Add your API call here to cancel the consultation
+        await _loadDaysWithEvents();
+        if (_selectedDay != null) {
+          await _loadEventsForDay(_selectedDay!);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Консултацијата е успешно откажана'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Грешка при откажување на консултацијата: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoadingDayEvents = false;
+          });
+        }
+      }
+    }
   }
 }
