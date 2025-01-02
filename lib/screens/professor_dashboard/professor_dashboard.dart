@@ -148,13 +148,14 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) => DefaultTabController(
-        length: 2,
+        length: 3,
         child: Scaffold(
           appBar: _buildAppBar(context),
           body: TabBarView(
             children: [
               _buildCalendarView(),
               _buildListView(),
+              const SizedBox(height: 100)
             ],
           ),
           floatingActionButton: _buildFloatingActionButton(),
@@ -212,21 +213,20 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
           const SizedBox(height: 20),
           _isLoadingDayEvents
               ? const Expanded(
-                  child: Center(
-                    child: SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 4,
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(
-                            0xFF0099FF)), // Optional: match your theme color
-                      ),
-                    ),
-                  ),
-                )
-              : Expanded(
-                  child: _buildConsultationsForSelectedDay(),
+            child: Center(
+              child: SizedBox(
+                width: 50,
+                height: 50,
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0099FF)),
                 ),
+              ),
+            ),
+          )
+              : Expanded(
+            child: _buildConsultationsForSelectedDay(),
+          ),
         ],
       ],
     );
@@ -296,11 +296,12 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
   Widget _buildConsultationsForSelectedDay() {
     if (_selectedDay == null) {
-      return const Center(
+      return Container(
+        alignment: Alignment.center,
         child: Text(
-          'Изберете ден за да ги видите консултациите',
+          'Нема закажани консултации',
           style: TextStyle(
-            color: Colors.grey,
+            color: Colors.grey[600],
             fontSize: 16,
           ),
         ),
@@ -310,23 +311,30 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
     final consultationsForDay = _getConsultationsForDay(_selectedDay!);
 
     if (consultationsForDay.isEmpty) {
-      return Center(
-        child: Text(
-          'Нема закажани консултации за избраниот ден',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 16,
-          ),
+      return ConstrainedBox(
+        constraints: const BoxConstraints.expand(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'Нема закажани консултации',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: consultationsForDay.length,
+      itemCount: consultationsForDay.length + 1,
       itemBuilder: (context, index) {
-        if (index >= consultationsForDay.length) {
-          return const SizedBox.shrink();
+        if (index == consultationsForDay.length) {
+          return const SizedBox(height: 80); // Space for FAB
         }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -359,10 +367,10 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: consultations.length,
+      itemCount: consultations.length + 1, // Add 1 for the extra space item
       itemBuilder: (context, index) {
-        if (index >= consultations.length) {
-          return const SizedBox.shrink();
+        if (index == consultations.length) {
+          return const SizedBox(height: 80); // Space for FAB
         }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),

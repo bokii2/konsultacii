@@ -307,10 +307,7 @@ class ConsultationCard extends StatelessWidget {
   Widget _buildActions(BuildContext context) {
     return Column(
       children: [
-        Wrap(
-          alignment: WrapAlignment.end,
-          spacing: 8.0, // Horizontal spacing between widgets
-          runSpacing: 4.0, // Vertical spacing between rows if wrapped
+        Row(
           children: [
             if (isProfessor) ...[
               if (consultation.status == ConsultationStatus.ACTIVE)
@@ -332,6 +329,7 @@ class ConsultationCard extends StatelessWidget {
                     );
                   },
                 ),
+              const Spacer(),
               IconButton(
                 icon: const Icon(Icons.edit, color: Color(0xFF0099FF)),
                 onPressed:
