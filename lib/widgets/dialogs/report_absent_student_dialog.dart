@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:konsultacii/models/request/consultations_form_dto.dart';
 import 'package:konsultacii/models/request/report_absent_student_request.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
-import 'package:konsultacii/models/response/consultation_attendance_response.dart';
-import 'package:konsultacii/services/manage_consultation_service.dart';
-import '../../models/consultation.dart';
-import '../../services/consultation_service.dart';
-import '../../utils/date_formatter.dart';
 
 class ReportAbsentStudentDialog extends StatefulWidget {
   final int attendanceId;

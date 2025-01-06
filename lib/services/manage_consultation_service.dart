@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:konsultacii/config/api_config.dart';
 import 'package:konsultacii/models/request/consultations_form_dto.dart';
 import 'package:konsultacii/models/request/irregular_consultations_request.dart';

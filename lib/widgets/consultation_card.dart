@@ -2,12 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:konsultacii/models/enum/ConsultationStatus.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
-import '../models/consultation.dart';
 import '../screens/consultation_students/consultation_students_screen.dart';
 import '../screens/messaging_screen/messaging_screen.dart';
 import '../utils/date_formatter.dart';
 import 'dialogs/edit_consultation_dialog.dart';
-import 'dialogs/professor_availability_dialog.dart';
 
 class ConsultationCard extends StatelessWidget {
   final ConsultationResponse consultation;
@@ -88,7 +86,7 @@ class ConsultationCard extends StatelessWidget {
               ),
             ],
           ),
-          if (consultation.studentInstruction != null) ...[
+          if (consultation.studentInstruction.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
@@ -96,7 +94,7 @@ class ConsultationCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    consultation.studentInstruction!,
+                    consultation.studentInstruction,
                     style: const TextStyle(fontSize: 14),
                   ),
                 ),

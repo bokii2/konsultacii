@@ -1,11 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:konsultacii/config/api_config.dart';
-import 'package:konsultacii/models/request/consultations_form_dto.dart';
-import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import 'package:konsultacii/models/response/consultation_attendance_response.dart';
 
 class ConsultationAttendanceService {

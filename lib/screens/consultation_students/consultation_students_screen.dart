@@ -4,7 +4,6 @@ import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import 'package:konsultacii/models/response/consultation_attendance_response.dart';
 import 'package:konsultacii/services/consultation_attendance_service.dart';
 import 'package:konsultacii/widgets/dialogs/report_absent_student_dialog.dart';
-import '../../models/consultation.dart';
 import '../../utils/date_formatter.dart';
 import '../messaging_screen/messaging_screen.dart';
 
@@ -255,7 +254,7 @@ class _ConsultationStudentsScreenState
     if (result != null) {
       try {
         await _attendanceService.reportStudentAbsence(
-            id: attendanceId, comment: result?.comment);
+            id: attendanceId, comment: result.comment);
 
         final index = _attendances.indexWhere((c) => c.id == attendanceId);
         if (index != -1) {

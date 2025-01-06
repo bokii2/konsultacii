@@ -1,13 +1,11 @@
 // lib/screens/professor/professor_dashboard.dart
 import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/material.dart';
-import 'package:konsultacii/models/enum/ConsultationStatus.dart';
 import 'package:konsultacii/models/request/irregular_consultations_request.dart';
 import 'package:konsultacii/services/consultation_service.dart';
 import 'package:konsultacii/services/manage_consultation_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../main.dart';
-import '../../models/consultation.dart';
 import '../../models/response/ConsultationsResponse.dart';
 import '../../widgets/consultation_card.dart';
 import '../../utils/date_formatter.dart';
@@ -26,11 +24,8 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
   final ManageConsultationService _manageConsultationService = ManageConsultationService();
   List<ConsultationResponse> consultations = [];
   List<DateTime> daysWithConsultations = [];
-  bool _isLoading = false;
   bool _isLoadingDayEvents = false;
-  String? _error;
 
-  // List<Consultation> consultations = [];
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -40,29 +35,6 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
     super.initState();
     _selectedDay = _focusedDay;
     _loadDaysWithEvents();
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return;
-
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    scaffoldMessenger.clearSnackBars();
-
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - 100,
-          left: 16,
-          right: 16,
-        ),
-      ),
-    );
   }
 
   Future<void> _loadEventsForDay(DateTime day) async {

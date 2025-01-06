@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:konsultacii/models/request/irregular_consultations_request.dart';
-import '../../models/consultation.dart';
-import '../../models/enum/ConsultationStatus.dart';
 import '../../utils/date_formatter.dart';
 
 class AddConsultationDialog extends StatefulWidget {

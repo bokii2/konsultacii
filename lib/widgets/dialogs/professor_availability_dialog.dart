@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 
-import '../../models/consultation.dart';
 import '../../utils/date_formatter.dart';
 
 class ProfessorCancelConsultationDialog extends StatelessWidget {

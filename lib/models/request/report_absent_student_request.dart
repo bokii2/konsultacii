@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 
 class ReportAbsentStudentRequest {
   final int attendanceId;
