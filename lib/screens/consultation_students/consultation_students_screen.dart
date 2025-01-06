@@ -209,7 +209,7 @@ class _ConsultationStudentsScreenState
                 ),
                 const Spacer(),
                 IconButton(
-                  onPressed: () => _navigateToMessaging(context),
+                  onPressed: () => _navigateToMessaging(context, attendanceId),
                   icon: const Icon(Icons.message),
                   color: Color(0xFF0099FF),
                 ),
@@ -280,15 +280,14 @@ class _ConsultationStudentsScreenState
     }
   }
 
-  void _navigateToMessaging(BuildContext context) {
+  void _navigateToMessaging(BuildContext context, int attendanceId) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => MessagingScreen(
-          professorId: 'consultation.professorId',
-          professorName: 'consultation.professorName',
-          studentId: 'student1',
-          studentName: 'Студент 1',
+          consultation: widget.consultation,
+          attendanceId: attendanceId,
+          isProfessor: true,
         ),
       ),
     );

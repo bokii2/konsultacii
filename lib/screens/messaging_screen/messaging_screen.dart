@@ -1,21 +1,22 @@
 // lib/screens/messaging/messaging_screen.dart
 import 'package:flutter/material.dart';
+import 'package:konsultacii/main.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
+import 'package:konsultacii/services/ConsultationService.dart';
 import '../../models/message.dart';
 import 'package:intl/intl.dart';
 
 class MessagingScreen extends StatefulWidget {
-  final String professorId;
-  final String professorName;
-  final String studentId;
-  final String studentName;
+  final bool isProfessor;
+  final ConsultationResponse consultation;
+  final int attendanceId;
 
-  const MessagingScreen({
-    Key? key,
-    required this.professorId,
-    required this.professorName,
-    required this.studentId,
-    required this.studentName,
-  }) : super(key: key);
+  const MessagingScreen(
+      {Key? key,
+      required this.isProfessor,
+      required this.consultation,
+      required this.attendanceId})
+      : super(key: key);
 
   @override
   _MessagingScreenState createState() => _MessagingScreenState();
@@ -23,32 +24,34 @@ class MessagingScreen extends StatefulWidget {
 
 class _MessagingScreenState extends State<MessagingScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final List<Message> _messages = [];
   final ScrollController _scrollController = ScrollController();
+  final ConsultationService _consultationService = ConsultationService();
+  bool _isLoading = true;
+  List<Message> _messages = [];
 
   @override
   void initState() {
     super.initState();
-    _loadInitialMessages();
+    _loadComments();
   }
 
-  void _loadInitialMessages() {
-    _messages.addAll([
-      Message(
-        id: '1',
-        senderId: widget.studentId,
-        receiverId: widget.professorId,
-        content: 'Здраво професоре, имам прашање во врска со консултациите.',
-        timestamp: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      Message(
-        id: '2',
-        senderId: widget.professorId,
-        receiverId: widget.studentId,
-        content: 'Повелете, како можам да помогнам?',
-        timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-    ]);
+  Future<void> _loadComments() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final comments = await _consultationService
+          .getCommentsForConulstationTerm(widget.consultation.id);
+      setState(() {
+        _messages = comments;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -66,38 +69,38 @@ class _MessagingScreenState extends State<MessagingScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFF0099FF),
-    title: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-    Text(
-    widget.professorName,
-    style: const TextStyle(
-    color: Colors.white,
-    fontWeight: FontWeight.w600,
-    ),
-    ),
-    const Text(
-    'Активен',
-    style: TextStyle(
-    color: Colors.white70,
-    fontSize: 12,
-    ),
-    ),
-    ],
-    ),
+      elevation: 0,
+      backgroundColor: const Color(0xFF0099FF),
+      title: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Коментари',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildMessageList() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final message = _messages[index];
-        final isMyMessage = message.senderId == widget.studentId;
+        final isMyMessage = (message.isProfessor && widget.isProfessor) ||
+            (!message.isProfessor && !widget.isProfessor);
 
         return Align(
           alignment: isMyMessage ? Alignment.centerRight : Alignment.centerLeft,
@@ -128,7 +131,7 @@ class _MessagingScreenState extends State<MessagingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            message.content,
+            message.comment,
             style: TextStyle(
               color: isMyMessage ? Colors.white : Colors.black87,
               fontSize: 16,
@@ -138,9 +141,8 @@ class _MessagingScreenState extends State<MessagingScreen> {
           Text(
             DateFormat('HH:mm').format(message.timestamp),
             style: TextStyle(
-              color: isMyMessage
-                  ? Colors.white.withOpacity(0.7)
-                  : Colors.black54,
+              color:
+                  isMyMessage ? Colors.white.withOpacity(0.7) : Colors.black54,
               fontSize: 12,
             ),
           ),
@@ -207,18 +209,16 @@ class _MessagingScreenState extends State<MessagingScreen> {
     );
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
-    setState(() {
-      _messages.add(Message(
-        id: DateTime.now().toString(),
-        senderId: widget.studentId,
-        receiverId: widget.professorId,
-        content: _messageController.text,
-        timestamp: DateTime.now(),
-      ));
-    });
+    try {
+      await _consultationService.addCommentForConulstationTerm(
+          widget.attendanceId, _messageController.text);
+      _loadComments();
+    } catch (e) {
+      SnackBarService.showSnackBar("Грешка при додавање на коментарот", isError: true);
+    }
 
     _messageController.clear();
     _scrollToBottom();

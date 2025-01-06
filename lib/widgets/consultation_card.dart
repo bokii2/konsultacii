@@ -267,10 +267,21 @@ class ConsultationCard extends StatelessWidget {
                 ),
               if (consultation.status == ConsultationStatus.ACTIVE &&
                   consultation.isBooked)
-                IconButton(
-                  icon: const Icon(Icons.cancel, color: Colors.red),
-                  onPressed: onCancel,
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: onBook,
+                  child: const Text('Откажи'),
                 ),
+              if (!consultation.isBooked) ...[
+                IconButton(
+                    onPressed: () =>
+                        _navigateToMessaging(context, 26),
+                    icon: const Icon(Icons.message),
+                    color: Color(0xFF0099FF)),
+              ],
             ],
           ],
         ),
@@ -278,20 +289,16 @@ class ConsultationCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMessageButton(BuildContext context) {
-    return TextButton.icon(
-      icon: const Icon(
-        Icons.message_outlined,
-        color: Color(0xFF0099FF),
-      ),
-      label: const Text(
-        'Порака',
-        style: TextStyle(
-          color: Color(0xFF0099FF),
-          fontWeight: FontWeight.w500,
+  void _navigateToMessaging(BuildContext context, int attendanceId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MessagingScreen(
+          consultation: consultation,
+          attendanceId: attendanceId,
+          isProfessor: false,
         ),
       ),
-      onPressed: () => _navigateToMessaging(context),
     );
   }
 
@@ -394,20 +401,6 @@ class ConsultationCard extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _navigateToMessaging(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MessagingScreen(
-          professorId: 'consultation.professorId',
-          professorName: 'consultation.professorName',
-          studentId: 'student1',
-          studentName: 'Студент 1',
-        ),
-      ),
     );
   }
 

@@ -27,7 +27,6 @@ class _StudentDashboardState extends State<StudentDashboard>
   List<ConsultationResponse> consultations = [];
   List<DateTime> daysWithConsultations = [];
   bool _isLoadingDayEvents = false;
-  String? _error;
 
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
@@ -54,7 +53,6 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   @override
   void dispose() {
-    // Make sure to dispose of the TabController when it's no longer needed
     _tabController.dispose();
     super.dispose();
   }
@@ -73,7 +71,8 @@ class _StudentDashboardState extends State<StudentDashboard>
         consultations = events;
       });
     } catch (e) {
-      print('Error loading events for day: $e');
+      SnackBarService.showSnackBar('Грешка при вчитување на термините',
+          isError: true);
     } finally {
       setState(() {
         _isLoadingDayEvents = false;
@@ -89,7 +88,8 @@ class _StudentDashboardState extends State<StudentDashboard>
         daysWithConsultations = response;
       });
     } catch (e) {
-      print('Error loading days with events: $e');
+      SnackBarService.showSnackBar('Грешка при вчитување на термините',
+          isError: true);
     }
   }
 
@@ -113,11 +113,11 @@ class _StudentDashboardState extends State<StudentDashboard>
     try {
       final response = await _professorService.getProfessors();
       setState(() {
-        professors =
-            response; // Ensure `professors` is a list variable in your state.
+        professors = response;
       });
     } catch (e) {
-      print('Error loading professors: $e');
+      SnackBarService.showSnackBar('Грешка при вчитување на професорите',
+          isError: true);
     }
   }
 
@@ -305,19 +305,6 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
-  Widget _buildScrollableCalendarView() {
-    return _selectedDay == null
-        ? const SizedBox.shrink() // If no day is selected, show nothing
-        : _isLoadingDayEvents
-            ? const Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 4,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0099FF)),
-                ),
-              )
-            : _buildConsultationsForSelectedDay();
-  }
-
   Widget _buildCalendar() {
     return Container(
       decoration: BoxDecoration(
@@ -473,44 +460,23 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
 
     if (confirmed != null) {
-      await _consultationService.scheduleConsultations(confirmed);
-
       try {
+        await _consultationService.scheduleConsultations(confirmed);
+
+        SnackBarService.showSnackBar('Присуството е успешно закажано');
+
         setState(() {
-          _isLoadingDayEvents = true;
+          final index =
+              consultations.indexWhere((c) => c.id == consultation.id);
+          if (index != -1) {
+            consultations[index] =
+                consultations[index].copyWith(isBooked: true);
+          }
         });
-
-        await _loadDaysWithEvents();
-        if (_selectedDay != null) {
-          await _loadEventsForDay(_selectedDay!);
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Консултацијата е успешно закажана'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Грешка при закажување на консултацијата: ${e.toString()}'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoadingDayEvents = false;
-          });
-        }
+        print(e);
+        SnackBarService.showSnackBar('Грешка при закажување на присуството',
+            isError: true);
       }
     }
   }
@@ -524,16 +490,23 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
 
     if (confirmed == true) {
-      await _consultationService.cancelConsultations(consultation.id);
+      try {
+        await _consultationService.cancelConsultations(consultation.id);
 
-      SnackBarService.showSnackBar('Присуството е успешно откажано');
+        SnackBarService.showSnackBar('Присуството е успешно откажано');
 
-      setState(() {
-        final index = consultations.indexWhere((c) => c.id == consultation.id);
-        if (index != -1) {
-          consultations[index] = consultations[index].copyWith(isBooked: false);
-        }
-      });
+        setState(() {
+          final index =
+              consultations.indexWhere((c) => c.id == consultation.id);
+          if (index != -1) {
+            consultations[index] =
+                consultations[index].copyWith(isBooked: false);
+          }
+        });
+      } catch (e) {
+        SnackBarService.showSnackBar('Грешка при откажување на присуството',
+            isError: true);
+      }
     }
   }
 }

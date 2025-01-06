@@ -1,17 +1,19 @@
 class Message {
-  final String id;
-  final String senderId;
-  final String receiverId;
-  final String content;
+  final String comment;
   final DateTime timestamp;
-  final bool isRead;
+  final bool isProfessor;
 
   Message({
-    required this.id,
-    required this.senderId,
-    required this.receiverId,
-    required this.content,
+    required this.comment,
     required this.timestamp,
-    this.isRead = false,
+    this.isProfessor = false,
   });
+
+  factory Message.fromJson(Map<String, dynamic> json) {
+    return Message(
+      comment: json['comment'] ?? '',
+      timestamp: DateTime.parse(json['timestamp']),
+      isProfessor: json['isProfessor'] ?? false,
+    );
+  }
 }
