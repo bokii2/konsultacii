@@ -1,14 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:konsultacii/models/request/schedule_consultation_request.dart';
 import '../../models/response/ConsultationsResponse.dart';
 import '../../utils/date_formatter.dart';
 
-class BookConsultationConfirmDialog extends StatelessWidget {
+class BookConsultationConfirmDialog extends StatefulWidget {
   final ConsultationResponse consultation;
 
   const BookConsultationConfirmDialog({
     super.key,
     required this.consultation,
   });
+
+  @override
+  _BookConsultationConfirmDialogState createState() =>
+      _BookConsultationConfirmDialogState();
+}
+
+class _BookConsultationConfirmDialogState
+    extends State<BookConsultationConfirmDialog> {
+  final _reasonController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _reasonController.text = '';
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,21 +43,25 @@ class BookConsultationConfirmDialog extends StatelessWidget {
           color: Color(0xFF000066),
         ),
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Дали сте сигурни дека сакате да ја закажете оваа консултација?',
-            style: TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 16),
-          _buildConsultationDetails(),
-        ],
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Дали сте сигурни дека сакате да ја закажете оваа консултација?',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            _buildConsultationDetails(),
+            const SizedBox(height: 16),
+            _buildCommentField()
+          ],
+        ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () => Navigator.of(context).pop(null),
           child: Text(
             'Откажи',
             style: TextStyle(
@@ -45,7 +71,10 @@ class BookConsultationConfirmDialog extends StatelessWidget {
           ),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(true),
+          onPressed: () => Navigator.of(context).pop(ScheduleConsultationRequest(
+            termId: widget.consultation.id,
+            comment: _reasonController.text
+          )),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0099FF),
             foregroundColor: Colors.white,
@@ -71,18 +100,18 @@ class BookConsultationConfirmDialog extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailRow('Професор:', consultation.professor),
+          _buildDetailRow('Професор:', widget.consultation.professor),
           const SizedBox(height: 8),
-          _buildDetailRow('Просторија:', consultation.room),
+          _buildDetailRow('Просторија:', widget.consultation.room),
           const SizedBox(height: 8),
           _buildDetailRow(
             'Датум:',
-            DateFormatter.formatDate(consultation.date),
+            DateFormatter.formatDate(widget.consultation.date),
           ),
           const SizedBox(height: 8),
           _buildDetailRow(
             'Време:',
-            '${consultation.startTime.hour.toString().padLeft(2, '0')}:${consultation.startTime.minute.toString().padLeft(2, '0')} - ${consultation.endTime.hour.toString().padLeft(2, '0')}:${consultation.endTime.minute.toString().padLeft(2, '0')}',
+            '${widget.consultation.startTime.hour.toString().padLeft(2, '0')}:${widget.consultation.startTime.minute.toString().padLeft(2, '0')} - ${widget.consultation.endTime.hour.toString().padLeft(2, '0')}:${widget.consultation.endTime.minute.toString().padLeft(2, '0')}',
           ),
         ],
       ),
@@ -112,6 +141,28 @@ class BookConsultationConfirmDialog extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCommentField() {
+    return TextField(
+      controller: _reasonController,
+      maxLines: 3,
+      decoration: InputDecoration(
+        labelText: 'Коментар',
+        alignLabelWithHint: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(
+            color: Color(0xFF0099FF),
+            width: 2,
+          ),
+        ),
+        errorText: _reasonController.text.isEmpty ? 'Задолжително поле' : null,
+      ),
     );
   }
 }

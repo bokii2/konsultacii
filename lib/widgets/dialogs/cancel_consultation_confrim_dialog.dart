@@ -16,7 +16,7 @@ class CancelConsultationDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text(
-        'Откажи консултација',
+        'Откажи присуство',
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -28,7 +28,7 @@ class CancelConsultationDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Дали сте сигурни дека сакате да ја откажете оваа консултација?',
+            'Дали сте сигурни дека сакате да го откажете присуствтото на оваа консултација?',
             style: TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 16),

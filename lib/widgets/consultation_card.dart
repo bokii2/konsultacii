@@ -208,45 +208,6 @@ class ConsultationCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBookingDetails() {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          //   // if (consultation.studentName != null)
-          //   //   _buildInfoRow(
-          //   //     icon: Icons.person,
-          //   //     label: 'Студент:',
-          //   //     value: consultation.studentName!,
-          //   //   ),
-          //   // if (consultation.subject != null) ...[
-          //   //   const SizedBox(height: 8),
-          //   //   _buildInfoRow(
-          //   //     icon: Icons.book,
-          //   //     label: 'Предмет:',
-          //   //     value: consultation.subject!,
-          //   //   ),
-          //   ],
-          if (consultation.studentInstruction != null) ...[
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              icon: Icons.info_outline,
-              label: 'Причина:',
-              value: consultation.studentInstruction,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildActions(BuildContext context) {
     return Column(
       children: [
@@ -282,7 +243,8 @@ class ConsultationCard extends StatelessWidget {
                   icon: const Icon(Icons.cancel, color: Color(0xFF0099FF)),
                   onPressed: () => onMarkUnavailable!()),
             ] else ...[
-              if (consultation.status == ConsultationStatus.ACTIVE)
+              if (consultation.status == ConsultationStatus.ACTIVE &&
+                  !consultation.isBooked)
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0099FF),
@@ -292,7 +254,7 @@ class ConsultationCard extends StatelessWidget {
                   child: const Text('Закажи'),
                 ),
               if (consultation.status == ConsultationStatus.ACTIVE &&
-                  true) // Replace with actual student ID
+                  consultation.isBooked)
                 IconButton(
                   icon: const Icon(Icons.cancel, color: Colors.red),
                   onPressed: onCancel,

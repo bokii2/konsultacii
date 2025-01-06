@@ -1,5 +1,7 @@
 // lib/screens/student/student_dashboard.dart
 import 'package:flutter/material.dart';
+import 'package:konsultacii/main.dart';
+import 'package:konsultacii/models/request/schedule_consultation_request.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import 'package:konsultacii/models/response/professor_response.dart';
 import 'package:konsultacii/services/ConsultationService.dart';
@@ -445,14 +447,16 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   Future<void> _handleBookConsultation(
       ConsultationResponse consultation) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showDialog<ScheduleConsultationRequest>(
       context: context,
       builder: (context) => BookConsultationConfirmDialog(
         consultation: consultation,
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed != null) {
+      await _consultationService.scheduleConsultations(confirmed);
+
       try {
         setState(() {
           _isLoadingDayEvents = true;
@@ -502,44 +506,16 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
 
     if (confirmed == true) {
-      try {
-        setState(() {
-          _isLoadingDayEvents = true;
-        });
+      await _consultationService.cancelConsultations(consultation.id);
 
-        // Add your API call here to cancel the consultation
-        await _loadDaysWithEvents();
-        if (_selectedDay != null) {
-          await _loadEventsForDay(_selectedDay!);
-        }
+      SnackBarService.showSnackBar('Присуството е успешно откажано');
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Консултацијата е успешно откажана'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+      setState(() {
+        final index = consultations.indexWhere((c) => c.id == consultation.id);
+        if (index != -1) {
+          consultations[index] = consultations[index].copyWith(isBooked: false);
         }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Грешка при откажување на консултацијата: ${e.toString()}'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoadingDayEvents = false;
-          });
-        }
-      }
+      });
     }
   }
 }

@@ -12,6 +12,7 @@ class ConsultationResponse {
   final bool? online;
   final String studentInstruction;
   final bool isCancelled;
+  final bool isBooked;
 
   ConsultationResponse({
     required this.id,
@@ -24,6 +25,7 @@ class ConsultationResponse {
     required this.online,
     required this.studentInstruction,
     required this.isCancelled,
+    required this.isBooked,
   });
 
   factory ConsultationResponse.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class ConsultationResponse {
       online: json['online'],
       studentInstruction: json['studentInstruction'],
       isCancelled: json['isCancelled'],
+      isBooked: json['isBooked']
     );
   }
 
@@ -57,6 +60,7 @@ class ConsultationResponse {
     'online': online,
     'studentInstruction': studentInstruction,
     'isCancelled': isCancelled,
+    'isBooked': isBooked
   };
 
   ConsultationResponse copyWith({
@@ -70,6 +74,7 @@ class ConsultationResponse {
     bool? online,
     String? studentInstruction,
     bool? isCancelled,
+    bool? isBooked,
   }) {
     return ConsultationResponse(
       id: id ?? this.id,
@@ -82,6 +87,7 @@ class ConsultationResponse {
       online: online ?? this.online,
       studentInstruction: studentInstruction ?? this.studentInstruction,
       isCancelled: isCancelled ?? this.isCancelled,
+      isBooked: isBooked ?? this.isBooked
     );
   }
 }
