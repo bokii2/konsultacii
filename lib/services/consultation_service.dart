@@ -1,89 +1,228 @@
-// lib/services/consultation_service.dart
-import '../models/consultation.dart';
-import '../models/enum/ConsultationStatus.dart';
+import 'dart:convert';
+import 'dart:io';
 
-class BinBin {
-  static final BinBin _instance = BinBin._internal();
-  factory BinBin() => _instance;
-  BinBin._internal();
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:konsultacii/config/api_config.dart';
+import 'package:konsultacii/models/message.dart';
+import 'package:konsultacii/models/request/schedule_consultation_request.dart';
+import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 
-  final List<Consultation> _consultations = [
-    // Add some initial consultations
-    Consultation(
-      id: '1',
-      professorId: 'prof1',
-      professorName: 'Проф1',
-      dateTime: DateTime.now().add(const Duration(days: 1)),
-      durationMinutes: 30,
-      location: '315',
-      status: ConsultationStatus.ACTIVE,
-    ),
-  ];
+import '../models/exceptions/api_exception.dart';
 
-  List<Consultation> getAllConsultations() => List.from(_consultations);
+class ConsultationService {
+  final http.Client _client;
+  final String _baseUrl;
 
-  List<Consultation> getAvailableConsultations(
-      DateTime startDate,
-      DateTime endDate,
-      String? professorId,
-      String? subject,
+  static final _dateFormatter = DateFormat('yyyy-MM-dd');
+
+  ConsultationService({
+    http.Client? client,
+    String? baseUrl,
+  }) : _client = client ?? http.Client(),
+        _baseUrl = baseUrl ?? ApiConfig.baseUrl;
+
+  final _headers = {
+    'Content-Type': 'application/json; charset=UTF-8',
+    'Accept': 'application/json; charset=UTF-8',
+  };
+
+  T _handleResponseWithBody<T>(
+      http.Response response,
+      T Function(dynamic json) parser
       ) {
-    return _consultations.where((consultation) {
-      if (consultation.status != ConsultationStatus.ACTIVE) return false;
-      if (consultation.dateTime.isBefore(startDate) ||
-          consultation.dateTime.isAfter(endDate)) return false;
-      if (professorId != null && professorId != 'Сите' &&
-          consultation.professorId != professorId) {
-        return false;
+    if (response.statusCode == 200) {
+      if (response.body.isEmpty) {
+        throw ApiException('Unexpected empty response body');
       }
-      if (subject != null && subject != 'Сите' &&
-          true) return false;
-      return true;
-    }).toList();
+
+      try {
+        final dynamic jsonData = jsonDecode(response.body);
+        return parser(jsonData);
+      } catch (e) {
+        throw ApiException('Failed to parse response: $e');
+      }
+    }
+    _handleErrorResponse(response);
   }
 
-  // Method to get consultations for a professor
-  List<Consultation> getConsultationsForProfessor(String professorId) {
-    return _consultations
-        .where((consultation) => consultation.professorId == professorId)
-        .toList();
-  }
-
-  // Update the consultation
-  void updateConsultation(String consultationId, Map<String, dynamic> updates) {
-    final index = _consultations.indexWhere((c) => c.id == consultationId);
-    if (index != -1) {
-      final consultation = _consultations[index];
-
-      if (updates.containsKey('studentId')) {
-        consultation.book(
-          studentId: updates['studentId'],
-          studentName: updates['studentName'],
-          subject: updates['subject'],
-          reason: updates['reason'],
-        );
-      }
-
-      if (updates.containsKey('dateTime')) {
-        consultation.updateDetails(
-          newDateTime: updates['dateTime'],
-          newLocation: updates['location'],
-          newComment: updates['comment'],
-        );
-      }
-
-      if (updates.containsKey('status')) {
-        consultation.status = updates['status'];
-      }
-      _consultations[index] = consultation;
+  void _handleStatusOnlyResponse(http.Response response) {
+    if (response.statusCode != 200) {
+      _handleErrorResponse(response);
     }
   }
 
-  void addConsultation(Consultation consultation) {
-    _consultations.add(consultation);
+  Never _handleErrorResponse(http.Response response) {
+    Map<String, dynamic>? errors;
+    String message = 'Request failed';
+
+    if (response.statusCode == 400 && response.body.isNotEmpty) {
+      try {
+        final responseData = jsonDecode(response.body);
+        if (responseData case {'errors': Map<String, dynamic> errorMap}) {
+          errors = errorMap;
+          if (errorMap case {'message': String errorMessage}) {
+            message = errorMessage;
+          }
+        }
+      } catch (_) {
+        // If parsing fails, use default error message
+      }
+    }
+
+    throw ApiException(
+      message,
+      statusCode: response.statusCode,
+      errors: errors,
+    );
   }
 
-  void deleteConsultation(String id) {
-    _consultations.removeWhere((c) => c.id == id);
+  @override
+  Future<List<ConsultationResponse>> getUpcomingConsultations() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/consultations/upcoming'),
+        headers: _headers,
+      );
+
+      return _handleResponseWithBody(response, (json) {
+        if (json is! List) throw ApiException('Expected a list of consultations');
+        return json.map((item) => ConsultationResponse.fromJson(item)).toList();
+      });
+    } catch (e) {
+      throw ApiException('Failed to get upcoming consultations: $e');
+    }
+  }
+
+
+  @override
+  Future<List<Message>> getCommentsForConulstationTerm(int termId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/consultations/${termId}/comments'),
+        headers: _headers,
+      );
+
+      return _handleResponseWithBody(response, (json) {
+        if (json is! List) throw ApiException('Expected a list of comments');
+        return json.map((item) => Message.fromJson(item)).toList();
+      });
+    } catch (e) {
+      throw ApiException('Failed to get comments: $e');
+    }
+  }
+
+  @override
+  Future<void> addCommentForConulstationTerm(int attendanceId, String comment) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$_baseUrl/consultations/${attendanceId}/comment?comment=${comment}'),
+        headers: _headers,
+      );
+
+      _handleStatusOnlyResponse(response);
+    } catch (e) {
+      throw ApiException('Failed to add comment: $e');
+    }
+  }
+
+  @override
+  Future<List<DateTime>> getDaysOfUpcomingConsultations() async {
+    try {
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/consultations/upcoming/days'),
+        headers: _headers,
+      );
+
+      return _handleResponseWithBody(response, (json) {
+        if (json is! List) throw ApiException('Expected a list of dates');
+        return json.map((dateString) {
+          if (dateString is! String) throw ApiException('Invalid date format');
+          return DateTime.parse(dateString);
+        }).toList();
+      });
+    } catch (e) {
+      throw ApiException('Failed to get consultation days: $e');
+    }
+  }
+
+  @override
+  Future<List<ConsultationResponse>> getAllConsultationsByDateAndProfessorId(
+      DateTime? date,
+      String? professorId,
+      ) async {
+    try {
+      final queryParams = <String, String>{
+        if (date != null) 'date': _dateFormatter.format(date),
+        if (professorId != null) 'professorId': professorId,
+      };
+
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/consultations').replace(queryParameters: queryParams),
+        headers: _headers,
+      );
+
+      return _handleResponseWithBody(response, (json) {
+        if (json is! List) throw ApiException('Expected a list of consultations');
+        return json.map((item) => ConsultationResponse.fromJson(item)).toList();
+      });
+    } catch (e) {
+      throw ApiException('Failed to get consultations: $e');
+    }
+  }
+
+  @override
+  Future<ConsultationResponse> updateConsultation(
+      int consultationId,
+      Map<String, dynamic> updateData,
+      ) async {
+    try {
+      final response = await _client.patch(
+        Uri.parse('$_baseUrl/consultations/$consultationId'),
+        headers: _headers,
+        body: jsonEncode(updateData),
+      );
+
+      return _handleResponseWithBody(
+        response,
+            (json) => ConsultationResponse.fromJson(json as Map<String, dynamic>),
+      );
+    } catch (e) {
+      throw ApiException('Failed to update consultation: $e');
+    }
+  }
+
+  @override
+  Future<void> scheduleConsultations(ScheduleConsultationRequest request) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$_baseUrl/consultations/schedule'),
+        headers: _headers,
+        body: jsonEncode(request.toJson()),
+      );
+
+      _handleStatusOnlyResponse(response);
+    } catch (e) {
+      throw ApiException('Failed to schedule consultation: $e');
+    }
+  }
+
+  @override
+  Future<void> cancelConsultations(int termId) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$_baseUrl/consultations/$termId/cancel'),
+        headers: _headers,
+      );
+
+      _handleStatusOnlyResponse(response);
+    } catch (e) {
+      throw ApiException('Failed to cancel consultation: $e');
+    }
+  }
+
+  /// Cleanup resources when the service is no longer needed
+  void dispose() {
+    _client.close();
   }
 }

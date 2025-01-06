@@ -3,7 +3,7 @@ import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:konsultacii/models/enum/ConsultationStatus.dart';
 import 'package:konsultacii/models/request/irregular_consultations_request.dart';
-import 'package:konsultacii/services/ConsultationService.dart';
+import 'package:konsultacii/services/consultation_service.dart';
 import 'package:konsultacii/services/manage_consultation_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../main.dart';

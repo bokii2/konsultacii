@@ -5,7 +5,7 @@ import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import 'package:konsultacii/models/response/consultation_attendance_response.dart';
 import 'package:konsultacii/services/manage_consultation_service.dart';
 import '../../models/consultation.dart';
-import '../../services/ConsultationService.dart';
+import '../../services/consultation_service.dart';
 import '../../utils/date_formatter.dart';
 
 class ReportAbsentStudentDialog extends StatefulWidget {

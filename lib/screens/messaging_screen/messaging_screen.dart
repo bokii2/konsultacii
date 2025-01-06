@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:konsultacii/main.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
-import 'package:konsultacii/services/ConsultationService.dart';
+import 'package:konsultacii/services/consultation_service.dart';
 import '../../models/message.dart';
 import 'package:intl/intl.dart';
 

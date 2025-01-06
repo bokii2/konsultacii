@@ -4,7 +4,7 @@ import 'package:konsultacii/main.dart';
 import 'package:konsultacii/models/request/schedule_consultation_request.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import 'package:konsultacii/models/response/professor_response.dart';
-import 'package:konsultacii/services/ConsultationService.dart';
+import 'package:konsultacii/services/consultation_service.dart';
 import 'package:konsultacii/services/professor_service.dart';
 
 import 'package:table_calendar/table_calendar.dart';
