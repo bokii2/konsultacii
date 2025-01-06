@@ -19,9 +19,11 @@ class StudentDashboard extends StatefulWidget {
   _StudentDashboardState createState() => _StudentDashboardState();
 }
 
-class _StudentDashboardState extends State<StudentDashboard> {
+class _StudentDashboardState extends State<StudentDashboard>
+    with SingleTickerProviderStateMixin {
   final ConsultationService _consultationService = ConsultationService();
   final ProfessorService _professorService = ProfessorService();
+  late TabController _tabController;
   List<ConsultationResponse> consultations = [];
   List<DateTime> daysWithConsultations = [];
   bool _isLoadingDayEvents = false;
@@ -33,6 +35,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   String? selectedProfessor;
   List<ProfessorResponse> professors = [];
+  bool isFirstTabActive = false;
 
   @override
   void initState() {
@@ -40,6 +43,20 @@ class _StudentDashboardState extends State<StudentDashboard> {
     _selectedDay = _focusedDay;
     _loadDaysWithEvents();
     _loadProfessors();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      // Listen for tab changes and rebuild UI
+      setState(() {
+        isFirstTabActive = _tabController.index == 0;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // Make sure to dispose of the TabController when it's no longer needed
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadEventsForDay(DateTime day) async {
@@ -119,37 +136,42 @@ class _StudentDashboardState extends State<StudentDashboard> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: _buildAppBar(context),
-        body: Column(
-          children: [
-            _buildFilters(),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _buildCalendarView(),
-                  _buildListView(),
-                ],
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return [
+              _buildSliverAppBar(context),
+              SliverToBoxAdapter(
+                child: _buildFilters(),
               ),
-            ),
-          ],
+              if (_tabController.index == 0) ...[
+                PinnedHeaderSliver(
+                  child: _buildCalendar(),
+                )
+              ],
+              const SliverToBoxAdapter(
+                child: Divider(height: 1),
+              ),
+            ];
+          },
+          body: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildCalendarView(),
+              _buildListView(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      elevation: 0,
-      backgroundColor: const Color(0xFF0099FF),
-      title: const Text(
-        'Консултации',
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-      ),
+  Widget _buildSliverAppBar(BuildContext context) {
+    return SliverAppBar(
+      title: const Text("Консултации"),
+      pinned: true,
+      floating: true,
       bottom: TabBar(
-        // isScrollable: true, // Makes the TabBar scrollable
+        controller: _tabController,
         indicatorColor: Theme.of(context).colorScheme.inversePrimary,
         labelColor: Theme.of(context).colorScheme.onPrimary,
         unselectedLabelColor: Colors.white70,
@@ -167,13 +189,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
           Tab(text: 'Листа'),
         ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.exit_to_app, color: Colors.white),
-          onPressed: () =>
-              Navigator.of(context).popUntil((route) => route.isFirst),
-        ),
-      ],
     );
   }
 
@@ -221,15 +236,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey[300]!),
@@ -274,7 +280,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Widget _buildCalendarView() {
     return Column(
       children: [
-        _buildCalendar(),
         const Divider(height: 1),
         if (_selectedDay != null) ...[
           const SizedBox(height: 20),
@@ -298,6 +303,19 @@ class _StudentDashboardState extends State<StudentDashboard> {
         ],
       ],
     );
+  }
+
+  Widget _buildScrollableCalendarView() {
+    return _selectedDay == null
+        ? const SizedBox.shrink() // If no day is selected, show nothing
+        : _isLoadingDayEvents
+            ? const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0099FF)),
+                ),
+              )
+            : _buildConsultationsForSelectedDay();
   }
 
   Widget _buildCalendar() {

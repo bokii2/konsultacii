@@ -183,17 +183,29 @@ class ConsultationCard extends StatelessWidget {
             value:
                 '${consultation.startTime.hour.toString().padLeft(2, '0')}:${consultation.startTime.minute.toString().padLeft(2, '0')} - ${consultation.endTime.hour.toString().padLeft(2, '0')}:${consultation.endTime.minute.toString().padLeft(2, '0')}',
           ),
-          const SizedBox(height: 8),
-          _buildInfoRow(
-            icon: Icons.location_on,
-            label: 'Просторија:',
-            value: consultation.room,
-          ),
-          const SizedBox(height: 8),
-          _buildInfoRow(
-            icon: Icons.timer,
-            label: 'Online:',
-            value: '${(consultation.online ?? false) ? "Да" : "Не"}',
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              children: [
+                // First Info Row: Location
+                Expanded(
+                  child: _buildInfoRow(
+                    icon: Icons.location_on,
+                    label: 'Просторија:',
+                    value: consultation.room,
+                  ),
+                ),
+                const SizedBox(width: 16), // Spacing between the two info rows
+                // Second Info Row: Online
+                Expanded(
+                  child: _buildInfoRow(
+                    icon: Icons.timer,
+                    label: 'Online:',
+                    value: '${(consultation.online ?? false) ? "Да" : "Не"}',
+                  ),
+                ),
+              ],
+            ),
           ),
           if (consultation.studentInstruction.isNotEmpty) ...[
             const SizedBox(height: 8),
