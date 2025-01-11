@@ -270,15 +270,15 @@ class ConsultationCard extends StatelessWidget {
                     backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: onBook,
+                  onPressed: onCancel,
                   child: const Text('Откажи'),
                 ),
-              if (!consultation.isBooked) ...[
+              if (consultation.isBooked) ...[
                 IconButton(
                     onPressed: () =>
                         _navigateToMessaging(context, 26),
                     icon: const Icon(Icons.message),
-                    color: Color(0xFF0099FF)),
+                    color: const Color(0xFF0099FF)),
               ],
             ],
           ],

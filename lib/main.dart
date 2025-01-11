@@ -2,8 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/role_selection/role_selection_screen.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 void main() {
+  tz.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Europe/Skopje'));
   runApp(const ConsultationApp());
 }
 
@@ -65,7 +69,7 @@ class ConsultationApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.grey[100],
       ),
 
-      home: const RoleSelectionScreen(),
+      home: RoleSelectionScreen(),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

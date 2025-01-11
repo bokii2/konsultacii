@@ -1,16 +1,22 @@
 // lib/screens/student/student_dashboard.dart
+// import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:konsultacii/main.dart';
 import 'package:konsultacii/models/request/schedule_consultation_request.dart';
 import 'package:konsultacii/models/response/ConsultationsResponse.dart';
 import 'package:konsultacii/models/response/professor_response.dart';
+import 'package:konsultacii/services/calendar_utils_service.dart';
 import 'package:konsultacii/services/consultation_service.dart';
 import 'package:konsultacii/services/professor_service.dart';
+import 'package:marquee/marquee.dart';
 
 import 'package:table_calendar/table_calendar.dart';
 import '../../widgets/consultation_card.dart';
 import '../../widgets/dialogs/book_consultation_confirm_dialog.dart';
 import '../../widgets/dialogs/cancel_consultation_confrim_dialog.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -23,6 +29,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     with SingleTickerProviderStateMixin {
   final ConsultationService _consultationService = ConsultationService();
   final ProfessorService _professorService = ProfessorService();
+  final CalendarUtilsService _calendarUtilsService = CalendarUtilsService();
   late TabController _tabController;
   List<ConsultationResponse> consultations = [];
   List<ConsultationResponse> consultationsList = [];
@@ -548,6 +555,20 @@ class _StudentDashboardState extends State<StudentDashboard>
       try {
         await _consultationService.scheduleConsultations(confirmed);
 
+        final date = consultation.date;
+        final startTime = consultation.startTime;
+        final endTime = consultation.endTime;
+
+        await _calendarUtilsService.addEventToCalendar(
+            'Консултации',
+            'Консултации кај ${consultation.professor}',
+            consultation.online ?? false ? 'Online' : consultation.room,
+            TZDateTime(tz.local, date.year, date.month, date.day,
+                startTime.hour - 1, startTime.minute),
+            TZDateTime(tz.local, date.year, date.month, date.day,
+                endTime.hour - 1, endTime.minute),
+            60);
+
         SnackBarService.showSnackBar('Присуството е успешно закажано');
 
         setState(() {
@@ -559,7 +580,6 @@ class _StudentDashboardState extends State<StudentDashboard>
           }
         });
       } catch (e) {
-        print(e);
         SnackBarService.showSnackBar('Грешка при закажување на присуството',
             isError: true);
       }
@@ -577,7 +597,8 @@ class _StudentDashboardState extends State<StudentDashboard>
     if (confirmed == true) {
       try {
         await _consultationService.cancelConsultations(consultation.id);
-
+        await _calendarUtilsService.deleteEventFromCalendar(
+            consultation.date, consultation.professor);
         SnackBarService.showSnackBar('Присуството е успешно откажано');
 
         setState(() {
@@ -589,6 +610,7 @@ class _StudentDashboardState extends State<StudentDashboard>
           }
         });
       } catch (e) {
+        print(e);
         SnackBarService.showSnackBar('Грешка при откажување на присуството',
             isError: true);
       }
