@@ -1,7 +1,9 @@
 // lib/screens/professor/professor_dashboard.dart
 import 'package:circular_menu/circular_menu.dart';
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:konsultacii/models/request/irregular_consultations_request.dart';
+import 'package:konsultacii/services/calendar_utils_service.dart';
 import 'package:konsultacii/services/consultation_service.dart';
 import 'package:konsultacii/services/manage_consultation_service.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -11,6 +13,7 @@ import '../../widgets/consultation_card.dart';
 import '../../utils/date_formatter.dart';
 import '../../widgets/dialogs/add_single_consultation_slot.dart';
 import '../../widgets/dialogs/professor_availability_dialog.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class ProfessorDashboard extends StatefulWidget {
   const ProfessorDashboard({Key? key}) : super(key: key);
@@ -22,6 +25,7 @@ class ProfessorDashboard extends StatefulWidget {
 class _ProfessorDashboardState extends State<ProfessorDashboard> {
   final ConsultationService _consultationService = ConsultationService();
   final ManageConsultationService _manageConsultationService = ManageConsultationService();
+  final CalendarUtilsService _calendarUtilsService = CalendarUtilsService();
   List<ConsultationResponse> consultations = [];
   List<DateTime> daysWithConsultations = [];
   bool _isLoadingDayEvents = false;
@@ -164,6 +168,7 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
         tabs: const [
           Tab(text: 'Календар'),
           Tab(text: 'Листа'),
+          Tab(text: ''),
         ],
       ),
       actions: [
@@ -371,6 +376,8 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
     if (result == true) {
       await _manageConsultationService.deleteConsultation(id: consultation.id);
+      await _calendarUtilsService.deleteEventFromCalendar(
+          consultation.date, 'термин');
 
       setState(() {
         consultations.removeWhere((c) => c.id == consultation.id);
@@ -423,7 +430,6 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
     if (confirmed == true) {
       setState(() {
-        // _consultationService.deleteConsultation(consultatconst ion.id);
         consultations.remove(consultation);
       });
     }
@@ -467,13 +473,31 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
     );
 
     if (result != null) {
-      await _manageConsultationService.createIrregularConsultations(professorId: 'riste.stojanov', request: result);
+      try {
+        await _manageConsultationService.createIrregularConsultations(professorId: 'riste.stojanov', request: result);
+        final date = result.date;
+        final startTime = result.startTime;
+        final endTime = result.endTime;
 
-      _loadDaysWithEvents();
-      _loadEventsForDay(_focusedDay);
+        await _calendarUtilsService.addEventToCalendar(
+            'Консултации',
+            'Дополнителен термин',
+            result.online ? 'Online' : result.roomName!,
+            TZDateTime(tz.local, date.year, date.month, date.day,
+                startTime.hour - 1, startTime.minute),
+            TZDateTime(tz.local, date.year, date.month, date.day,
+                endTime.hour - 1, endTime.minute),
+            60);
 
+        _loadDaysWithEvents();
+        _loadEventsForDay(_focusedDay);
 
-      SnackBarService.showSnackBar('Консултациите се успшено додадени');
+        SnackBarService.showSnackBar('Консултациите се успшено додадени');
+
+      } catch (e) {
+        SnackBarService.showSnackBar('Грешка при закажување на консултациите',
+            isError: true);
+      }
     }
   }
 }
