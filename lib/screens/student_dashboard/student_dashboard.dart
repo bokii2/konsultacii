@@ -25,8 +25,12 @@ class _StudentDashboardState extends State<StudentDashboard>
   final ProfessorService _professorService = ProfessorService();
   late TabController _tabController;
   List<ConsultationResponse> consultations = [];
+  List<ConsultationResponse> consultationsList = [];
+  List<ConsultationResponse> myConsultations = [];
   List<DateTime> daysWithConsultations = [];
   bool _isLoadingDayEvents = false;
+  bool _isLoadingListEvents = false;
+  bool _isLoadingMyConsultations = false;
 
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
@@ -35,6 +39,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   String? selectedProfessor;
   List<ProfessorResponse> professors = [];
   bool isFirstTabActive = false;
+  int activeTab = 0;
 
   @override
   void initState() {
@@ -42,11 +47,19 @@ class _StudentDashboardState extends State<StudentDashboard>
     _selectedDay = _focusedDay;
     _loadDaysWithEvents();
     _loadProfessors();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
-      // Listen for tab changes and rebuild UI
       setState(() {
         isFirstTabActive = _tabController.index == 0;
+        activeTab = _tabController.index;
+        if (_tabController.index == 1) {
+          consultationsList = [];
+          _loadListEvents();
+        } else if (_tabController.index == 2) {
+          myConsultations = [];
+          consultationsList = [];
+          _loadMyConsultations();
+        }
       });
     });
   }
@@ -76,6 +89,52 @@ class _StudentDashboardState extends State<StudentDashboard>
     } finally {
       setState(() {
         _isLoadingDayEvents = false;
+      });
+    }
+  }
+
+  Future<void> _loadListEvents() async {
+    if (_isLoadingListEvents) return;
+
+    setState(() {
+      _isLoadingListEvents = true;
+    });
+
+    try {
+      final events = await _consultationService
+          .getAllConsultationsByDateAndProfessorId(null, selectedProfessor);
+      setState(() {
+        consultationsList = events;
+      });
+    } catch (e) {
+      SnackBarService.showSnackBar('Грешка при вчитување на термините',
+          isError: true);
+    } finally {
+      setState(() {
+        _isLoadingListEvents = false;
+      });
+    }
+  }
+
+  Future<void> _loadMyConsultations() async {
+    if (_isLoadingMyConsultations) return;
+
+    setState(() {
+      _isLoadingMyConsultations = true;
+    });
+
+    try {
+      final events = await _consultationService
+          .getMyConsultationsByProfessorId(selectedProfessor);
+      setState(() {
+        myConsultations = events;
+      });
+    } catch (e) {
+      SnackBarService.showSnackBar('Грешка при вчитување на термините',
+          isError: true);
+    } finally {
+      setState(() {
+        _isLoadingMyConsultations = false;
       });
     }
   }
@@ -133,33 +192,33 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        body: NestedScrollView(
-          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-            return [
-              _buildSliverAppBar(context),
-              SliverToBoxAdapter(
-                child: _buildFilters(),
-              ),
-              if (_tabController.index == 0) ...[
-                PinnedHeaderSliver(
-                  child: _buildCalendar(),
-                )
-              ],
-              const SliverToBoxAdapter(
-                child: Divider(height: 1),
-              ),
-            ];
-          },
-          body: TabBarView(
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _buildCalendarView(),
-              _buildListView(),
+    return Scaffold(
+      // Remove DefaultTabController
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return [
+            _buildSliverAppBar(context),
+            SliverToBoxAdapter(
+              child: _buildFilters(),
+            ),
+            if (_tabController.index == 0) ...[
+              PinnedHeaderSliver(
+                child: _buildCalendar(),
+              )
             ],
-          ),
+            const SliverToBoxAdapter(
+              child: Divider(height: 1),
+            ),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _buildCalendarView(),
+            _buildListView(_isLoadingListEvents, consultationsList),
+            _buildListView(_isLoadingMyConsultations, myConsultations),
+          ],
         ),
       ),
     );
@@ -185,8 +244,15 @@ class _StudentDashboardState extends State<StudentDashboard>
           fontWeight: FontWeight.w400,
         ),
         tabs: const [
-          Tab(text: 'Календар'),
-          Tab(text: 'Листа'),
+          Tab(
+            icon: Icon(Icons.calendar_today),
+          ),
+          Tab(
+            icon: Icon(Icons.list),
+          ),
+          Tab(
+            icon: Icon(Icons.perm_contact_calendar),
+          ),
         ],
       ),
     );
@@ -216,8 +282,15 @@ class _StudentDashboardState extends State<StudentDashboard>
                 setState(() {
                   selectedProfessor = value;
                 });
-                if (_selectedDay != null) {
+                if (_selectedDay != null && _tabController.index == 0) {
                   _loadEventsForDay(_selectedDay!);
+                  consultationsList = [];
+                }
+                if (_tabController.index == 1) {
+                  _loadListEvents();
+                }
+                if (_tabController.index == 2) {
+                  _loadMyConsultations();
                 }
               },
             ),
@@ -267,7 +340,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                       ),
                     ),
                   );
-                }).toList(),
+                }),
               ],
               onChanged: onChanged,
             ),
@@ -415,9 +488,22 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
-  Widget _buildListView() {
-    // if (consultations.isEmpty) {
-    if (filteredConsultations.isEmpty) {
+  Widget _buildListView(
+      bool isLoading, List<ConsultationResponse> consultationsList) {
+    if (isLoading) {
+      return const Center(
+        child: SizedBox(
+          width: 50,
+          height: 50,
+          child: CircularProgressIndicator(
+            strokeWidth: 4,
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0099FF)),
+          ),
+        ),
+      );
+    }
+
+    if (consultationsList.isEmpty) {
       return const Center(
         child: Text(
           'Нема закажани консултации',
@@ -431,19 +517,18 @@ class _StudentDashboardState extends State<StudentDashboard>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: filteredConsultations.length,
+      itemCount: consultationsList.length,
       itemBuilder: (context, index) {
-        if (index >= filteredConsultations.length) {
+        if (index >= consultationsList.length) {
           return const SizedBox.shrink();
         }
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: ConsultationCard(
-            consultation: filteredConsultations[index],
+            consultation: consultationsList[index],
             isProfessor: false,
-            onBook: () => _handleBookConsultation(filteredConsultations[index]),
-            onCancel: () =>
-                _handleCancelConsultation(filteredConsultations[index]),
+            onBook: () => _handleBookConsultation(consultationsList[index]),
+            onCancel: () => _handleCancelConsultation(consultationsList[index]),
           ),
         );
       },

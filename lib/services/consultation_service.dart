@@ -171,6 +171,29 @@ class ConsultationService {
   }
 
   @override
+  Future<List<ConsultationResponse>> getMyConsultationsByProfessorId(
+      String? professorId,
+      ) async {
+    try {
+      final queryParams = <String, String>{
+        if (professorId != null) 'professorId': professorId,
+      };
+
+      final response = await _client.get(
+        Uri.parse('$_baseUrl/consultations/booked').replace(queryParameters: queryParams),
+        headers: _headers,
+      );
+
+      return _handleResponseWithBody(response, (json) {
+        if (json is! List) throw ApiException('Expected a list of consultations');
+        return json.map((item) => ConsultationResponse.fromJson(item)).toList();
+      });
+    } catch (e) {
+      throw ApiException('Failed to get consultations: $e');
+    }
+  }
+
+  @override
   Future<ConsultationResponse> updateConsultation(
       int consultationId,
       Map<String, dynamic> updateData,
