@@ -68,6 +68,27 @@ class ManageConsultationService {
     }
   }
 
+  Future<bool> cancelConsultation({
+    required int id}) async {
+    try {
+      final response = await http.put(
+        Uri.parse(
+            '${ApiConfig.baseUrl}/manage-consultations/cancel/$id'),
+        headers: headers,
+      );
+
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 400) {
+        final errors = json.decode(response.body)['errors'];
+      }
+      throw Exception('Failed to edit consultation');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<bool> deleteConsultation({
     required int id}) async {
     try {

@@ -375,7 +375,7 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
     );
 
     if (result == true) {
-      await _manageConsultationService.deleteConsultation(id: consultation.id);
+      await _manageConsultationService.cancelConsultation(id: consultation.id);
       await _calendarUtilsService.deleteEventFromCalendar(
           consultation.date, 'термин');
 
@@ -474,7 +474,7 @@ class _ProfessorDashboardState extends State<ProfessorDashboard> {
 
     if (result != null) {
       try {
-        await _manageConsultationService.createIrregularConsultations(professorId: 'riste.stojanov', request: result);
+        await _manageConsultationService.createIrregularConsultations(professorId: 'petre.lameski', request: result);
         final date = result.date;
         final startTime = result.startTime;
         final endTime = result.endTime;
